@@ -7,7 +7,7 @@
 #define EXROM 3
 #define NMI 8
 #define RESET 9
-#define SEL 18
+#define SEL 19
 
 #define TYPE_MENU 0
 #define TYPE_STANDARD_PRG 1
