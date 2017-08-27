@@ -1,0 +1,853 @@
+; Menu program for IrqHack64
+; 25/09/2015 - Istanbul
+
+
+; How menu works
+; Micro sends this menu when user presses the button on the cartridge.
+; As a binary menu is formed like this
+; Gets loaded at $0801 address
+; Playing sid is tucked at the end of the compiled code. It gets transferred to $c000 to play
+; File list information + file list is added to the binary by micro at location $1CF0
+; $1CF0 location is also used by the menu to tell the loader to transfer data from micro. (Next page / previous page)
+; If file location need to be changed than INITTRANSVAR routine should also be changed.
+
+; Menu displays initial contents provided by the micro. Waits for the user to select an entry
+; Micro keeps track of the directory and it's contents. Menu code just uses this information to display them.
+; Previous page / Next page / Select Item actions need work by micro. Menu sends a specially formed byte to 
+; tell the micro about the relevant action.
+; Here is the format
+; Bits 7 and 6  type of command : $00 = Selected item, $01 = Special command, $10, $11 is reserved.
+; Bits 5,4,3,2,1 : if this is a special command than it's the command itself. If command type is selected item
+; then this is the selected item in the menu. One of maximum 32 items can be selected.
+
+; Menu always assumes that micro will provide the new list of files by the micro and hence fills the transfer variables
+; and waits for the loader to finish.
+; If it's next page/previous page command then micro supplies the contents through the loader
+; If it's an invoke action then micro decides if it's a program launch or directory traversal
+; Directory traversal supplies menu with the new list of files. If the item invoked is a program then micro resets c64 
+; so menu's wait for the loader to finish never happens. 
+; It's the micro's job to tell the loader what to load in this case. 
+
+
+
+;Zero page addresses used to address screen
+COLLOW	  	= $FB
+COLHIGH	  	= $FC
+
+;Zero page addresses used to access file names
+NAMELOW	  	= $FD
+NAMEHIGH  	= $FE
+
+
+;Loader on the cartridge rom sets the 6th bit of this location. Which is tested by BIT $64
+;command and waiting if overflow flag (which is the 6th bit of this location) is clear.
+BITTARGET	= $64
+
+;Next page command
+COMMANDNEXTPAGE = $43
+
+;Previous page command
+COMMANDPREVPAGE = $41
+
+;Part of the command byte that flags controlling micro that a file/folder is selected.
+COMMANDENTERMASK = $01
+
+;Starting address of the data to be transferred. Menu uses this location to get next / previous
+;page of contents from controlling micro. DATA_HIGH is not incremented by the loader. Instead
+;ACTUAL_HIGH is used. DATA_LOW, DATA_HIGH is also used to launch the loaded program by the loader.
+DATA_LOW	= $69
+DATA_HIGH 	= $6A
+
+;Length (page) of data to be transferred
+DATA_LENGTH	= $6B
+
+RESERVED	= $6C
+
+;These are set to DATA_LOW and DATA_HIGH respectively before transfer. 
+;Loader uses these locations for actual transfer.
+ACTUAL_LOW		= $6C
+ACTUAL_HIGH		= $6D
+
+;Actual end address of loaded program file. These are not used by menu.
+ACTUAL_END_LOW	= $6E
+ACTUAL_END_HIGH	= $6F
+TYPE			= $70
+TRANSMODE		= $71
+RESERVED3		= $72
+
+;Nmi handler on cart that does the initial transfer of 4 bytes metadata (data_low, data_high, length, reserved)
+;Nmi handler on the cart changes the handler to the fast one upon these 4 bytes finishes transferring.
+CARTRIDGENMIHANDLER = $8093
+
+CARTRIDGENMIHANDLERX1 = $80af
+CARTRIDGENMIHANDLERX4 = $80a0
+CARTRIDGENMIHANDLERX8 = $808c
+
+;Locations used by kernal to jump to user provided nmi/irq handler respectively
+SOFTNMIVECTOR	= $0318
+IRQVECTOR	= $0314
+
+;Kernal NMI handler - used to restore nmi handler on nmi vector.
+ROMNMIHANDLER	= $FE47
+
+;Kernal IRQ handler - not used
+ROMIRQHANDLER	= $FF48
+
+;VIC Border color
+BORDER		= $D020
+
+;Play address of the sid
+;SID tunes that use $C000 and onwards are preferred by this menu since menu occupies the space from $0801
+;SIDPLAY		= $C000
+SIDPLAY		= $2200
+
+;Init address of the tune
+;SIDINIT		= $C003
+SIDINIT		= $2203
+
+SIDLOAD		= $2200
+
+;Kernal routines
+CHROUT    	= $FFD2
+GETIN 	  	= $FFE4
+SCNKEY 		=  $FF9F 
+
+
+
+	*=$080E						  	  	  	  	
+	LDA #$36
+	STA $01
+	JSR INIT		;Clears screen, disables interrupts, copies sid to $C000 and inits it.	
+	LDY TRANSFERMODE
+	BNE + 
+	JSR PRINTTITLE		
+	JMP CONT
++	
+	JSR PRINTTITLETURBO
+CONT	
+	JSR PRINTPAGE		;Prints the initial filenames that's added to the program by the micro.
+	LDX #$00		;Puts the selector 
+	JSR SETCURRENTROWHEAD	;to the first entry in the
+	JSR SETARROW		;list
+		
+;Start of main loop	
+INPUT_GET
+	LDA ISMUSICPLAYING	;Decide to play music or not (ISMUSICPLAYING is just a hardcoded constant)
+	BEQ SKIPMUSIC
+	LDA #$A1	
+
+;Waits until a certain raster line is reached to call the sid's play routine	
+WAITPLAYRASTER			
+	CMP $D012
+	BNE WAITPLAYRASTER
+	STA BORDER
+	JSR SIDPLAY
+	LDX #$00
+	LDY $D012
+	INY
+	INY
+WAITPLAYRASTEREND	
+	CPY $D012
+	BNE WAITPLAYRASTEREND
+	
+	STX BORDER
+
+SKIPMUSIC	
+	JSR SCNKEY		; Call kernal's key scan routine
+ 	JSR GETIN		; Get the pressed key by the kernal routine
+  	BEQ INPUT_GET		; If zero then no key is pressed so repeat
+  	CMP #$2E		; IF it's a > character 
+  	BEQ NEXTPAGE		; Then continue to request next page from micro
+  	CMP #$2C		; IF it's a < character
+  	BEQ PREVPAGE 		; Then continue to request previous page from micro
+  	CMP #$2B		; IF it's a + character
+  	BEQ UP			; Then continue iterate up in the menu
+  	CMP #$2D		; IF it's a - character
+  	BEQ DOWN 		; Then continue iterate down in the menu
+  	CMP #$0D		; IF it's ENTER character
+  	BEQ ENTER		; Then launch the selected item
+	JMP INPUT_GET		; If other key then leave control to the main loop
+		  	
+UP	
+	LDX #COMMANDENTERMASK
+	STX COMMANDBYTE
+	JSR GETCURRENTROW
+	JSR CLEARARROW
+	TXA
+	BNE NORMALUP
+	LDX CURPAGEITEMS
+NORMALUP	
+	DEX
+	JSR SETCURRENTROWHEAD 	
+	JSR SETARROW
+	JMP INPUT_GET
+
+DOWN
+	LDX #COMMANDENTERMASK
+	STX COMMANDBYTE	
+	JSR GETCURRENTROW	
+	JSR CLEARARROW
+	INX
+	CPX CURPAGEITEMS
+	BNE ROLLINGDOWN
+	LDX #$00
+ROLLINGDOWN	
+	JSR SETCURRENTROWHEAD 
+	JSR SETARROW
+	JMP INPUT_GET	
+
+; Below routine fills the COMMANDBYTE to the relevant action taken by the user.
+; With the start of the ENTER control byte is sent to micro by modulating raster interrupts
+
+
+NEXTPAGE  	
+	LDX CURPAGEINDEX
+	INX
+	CPX PAGECOUNT	  	
+	BLT EXECNEXT
+	JMP INPUT_GET
+EXECNEXT
+	INC CURPAGEINDEX	
+	LDX #COMMANDNEXTPAGE
+	STX COMMANDBYTE
+	CLV
+	BVC ENTER
+PREVPAGE  	  	  	
+  	LDX CURPAGEINDEX
+  	BNE EXECPREV
+  	JMP INPUT_GET 
+EXECPREV
+	DEC CURPAGEINDEX
+	LDX #COMMANDPREVPAGE
+	STX COMMANDBYTE	
+ENTER  	  
+	;Transfer starts with the lowest bit
+	LDA #$00
+	STA BITPOS
+	
+	;Clear 8th bit of raster line
+	LDA #$7F
+	AND $D011
+	STA $D011
+
+	;Kill cia interrupts
+	JSR KILLCIA
+	
+	;Decide if it's a file selection or special command (previous / next)
+	LDA COMMANDBYTE
+	AND #$40
+	BNE SPECIALCMD
+	JSR GETCURRENTROW
+	INX
+	TXA
+	SEC
+	ROL
+	TAX
+	STX COMMANDBYTE	
+	
+SPECIALCMD		
+
+	; Last bit is not used and always sent as 1. This was tested to be less problematic.
+	; Init code for S0 state is redundant in the code.
+	SEC
+	BCC S0INIT	
+	
+	;Raster interrupt to occur at A0 line.
+S160INIT
+	LDA #$7F
+	AND $D011
+	STA $D011 
+	LDA #$A0
+	STA $D012
+	LDA #<IRQHANDLER2
+	STA IRQVECTOR
+	LDA #>IRQHANDLER2
+	STA IRQVECTOR+1
+	
+	;Wait till A1 line
+WAITRASTER1
+	LDA $D012
+	CMP #$A1
+	BNE WAITRASTER1
+		
+	JMP ENABLERASTER	
+	
+S0INIT	
+	;-- S0 ---
+	LDA #$7F
+	AND $D011
+	STA $D011 		
+	LDA #$00
+	STA $D012
+	LDA #<IRQHANDLER1
+	STA IRQVECTOR
+	LDA #>IRQHANDLER1
+	STA IRQVECTOR+1
+	
+WAITRASTER2
+	LDA $D012
+	CMP #$01
+	BNE WAITRASTER2
+	
+	
+ENABLERASTER	
+	LDA #$01
+	STA $D01A	;Enable raster interrupts
+
+	
+	LDY #$00	
+	CLV	
+	STY BITTARGET
+; Wait till the command byte transferred to the micro
+WAITIRQ
+	BIT BITTARGET	
+	BVC WAITIRQ	
+	CLV	
+	
+; Command is transferred. Prepare loader for the transferring of the actual stuff
+; If it's a program then micro resets c64 so below code is not relevant.
+; If micro will be transferring a directory transfers a directory dump 	
+	SEI
+	JSR SETUPTRANSFER
+
+	LDA #$06
+	STA BORDER
+	
+; Init transfer variables that loader will use. 	
+	JSR INITTRANSVAR
+	LDY #$00	
+	CLV	
+	STY BITTARGET
+
+; Wait signal from loader that the transfer is finished
+WAITNMI
+	BIT BITTARGET	
+	BVC WAITNMI	
+	CLV
+		
+; Update the screen with the new content got from micro		
+	LDA #$01 
+	STA BORDER
+	JSR ENDTRANSFER
+	JSR ENABLEDISPLAY	
+	JSR GETCURRENTROW	
+	JSR CLEARARROW	
+	JSR PRINTPAGE
+	LDX #00
+	JSR SETCURRENTROWHEAD 
+	JSR SETARROW
+
+	CLI
+	JMP INPUT_GET
+  	
+	RTS	
+	
+			
+; Use IRQ as a covert channel to send selected file information
+; Arduino has attached an interrupt on it's end 
+; It will measure time between falling edges of IRQ
+
+IRQHANDLER1
+	SEI	
+	INC $D020	
+	ASL $D019	;Acknowledge interrupt
+	LDA COMMANDBYTE
+	LDY BITPOS					
+	CPY #$08
+	BEQ FINISHSENDING1
+	INC BITPOS
+	INY 
+SHIFTBYTE1	
+	LSR			;Move rightmost bit right moving it to carry
+	DEY
+	BNE SHIFTBYTE1
+	BCC IRQHANDLE1CONT
+	
+	LDA #$7F
+	AND $D011
+	STA $D011 
+			
+	LDA #$A0
+	STA $D012			
+	LDA #<IRQHANDLER2
+	STA IRQVECTOR
+	LDA #>IRQHANDLER2
+	STA IRQVECTOR+1
+
+	DEC $D020	
+	CLI
+	;JMP $EA31 
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI
+	
+	
+IRQHANDLE1CONT	
+	LDA #$7F
+	AND $D011
+	STA $D011 
+	LDA #$00
+	STA $D012		
+
+	DEC $D020
+	CLI	
+	;JMP $EA31 
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI	
+
+FINISHSENDING1
+	LDA #$64
+	STA BITTARGET		; Break foreground wait
+	
+	;LDA #$00
+	;STA $D01A
+		
+	CLI
+	;JMP $EA31 
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI
+
+IRQHANDLER2
+	SEI
+	INC $D020	
+	ASL $D019	;Acknowledge interrupt
+	LDA COMMANDBYTE
+	LDY BITPOS					
+	CPY #$08
+	BEQ FINISHSENDING2
+	INC BITPOS
+	INY 
+SHIFTBYTE2	
+	LSR			;Move rightmost bit right moving it to carry
+	DEY
+	BNE SHIFTBYTE2
+	BCC IRQHANDLE2CONT
+	
+	LDA #$7F
+	AND $D011
+	STA $D011 		
+	LDA #$00
+	STA $D012			
+	LDA #<IRQHANDLER1
+	STA IRQVECTOR
+	LDA #>IRQHANDLER1
+	STA IRQVECTOR+1
+	
+	DEC $D020
+	
+	CLI
+	;JMP $EA31 
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI	
+	
+	
+IRQHANDLE2CONT	
+	LDA #$7F
+	AND $D011
+	STA $D011 
+	LDA #$A0
+	STA $D012		
+
+	DEC $D020
+		
+	CLI	
+	;JMP $EA31 
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI	
+
+	
+FINISHSENDING2
+	
+	LDA #$64
+	STA BITTARGET		; Break foreground wait
+	
+	;LDA #$00
+	;STA $D01A
+	
+	;JMP $EA31
+	PLA
+	TAY
+	PLA
+	TAX
+	PLA 
+	RTI	
+
+
+SETARROW 	; Input : X (current row), Changed : A, Y 
+	LDY #$00
+	LDA #$3E	; > sign
+	STA (COLLOW),Y
+	RTS
+
+CLEARARROW	; Input : X (current row), Changed : A, Y 
+	LDY #$00
+	LDA #$20	; Space
+	STA (COLLOW),Y
+	RTS
+	
+SETCURRENTROW	; Input : X (current row), Changed : None
+	PHA
+	STX CURRENTROW
+	TXA
+	PHA
+	ASL
+	TAX
+	LDA COLS+2,X
+	STA COLLOW
+	INX
+	LDA COLS+2,X
+	STA COLHIGH	
+	PLA
+	TAX
+	PLA
+	RTS
+	
+SETCURRENTROWHEAD ; Input : X (current row), Changed : None
+	PHA
+	STX CURRENTROW
+	TXA
+	PHA
+	ASL
+	TAX
+	LDA COLS+2,X
+	CLC
+	SBC #01
+	STA COLLOW
+	INX
+	LDA COLS+2,X
+	STA COLHIGH	
+	PLA
+	TAX
+	PLA
+	RTS
+		
+GETCURRENTROW	; Input : None, Output : X (current row)
+	LDX CURRENTROW
+	RTS	
+	
+PRINTFILENAME	; Input : None, Changed: Y, A
+	LDY #$00
+FILENAMEPRINT	
+	LDA (NAMELOW), Y
+	BNE NOTEND
+	LDA #$20
+NOTEND	
+	CMP #$3F
+	BMI SYMBOL
+	CLC
+	SBC #$3f
+SYMBOL	
+	STA (COLLOW), Y
+	INY
+	CPY #$20
+	BNE FILENAMEPRINT
+	RTS
+
+CLEARLINE	; Input : None, Changed: Y, A
+	LDY #$00
+	LDA #$20	
+ICLEARLINE		
+	STA (COLLOW), Y
+	INY
+	CPY #$20
+	BNE ICLEARLINE
+	RTS
+	
+FREQ    = 19704
+
+INIT		; Input : None, Changed : A
+	CLD
+	LDA #$93
+	JSR CHROUT
+	LDA #$00 
+	STA $D020
+	LDA #$0B
+	STA $D021
+	JSR INITPC
+		
+	JSR DISABLEINTERRUPTS	
+	
+	JSR KILLCIA
+	JSR STARTMUSIC
+		
+	RTS
+
+INITPC
+	LDX #$00
+	LDA #$0F
+CBL
+	STA $D800,X
+	STA $D900,X
+	STA $DA00,X
+	STA $DB00,X	
+	INX
+	BNE CBL
+	RTS
+	
+
+STARTMUSIC
+	JSR COPYMUSIC
+	LDA #$00
+	JSR SIDINIT	
+	RTS	
+
+
+KILLCIA
+	LDY #$7f    ; $7f = %01111111 
+    STY $dc0d   ; Turn off CIAs Timer interrupts 
+    STY $dd0d   ; Turn off CIAs Timer interrupts 
+    LDA $dc0d   ; cancel all CIA-IRQs in queue/unprocessed 
+    LDA $dd0d   ; cancel all CIA-IRQs in queue/unprocessed 
+	RTS	
+
+DISABLEINTERRUPTS
+	LDY #$7f    ; $7f = %01111111 
+    STY $dc0d   ; Turn off CIAs Timer interrupts 
+    STY $dd0d   ; Turn off CIAs Timer interrupts 
+    LDA $dc0d   ; cancel all CIA-IRQs in queue/unprocessed 
+    LDA $dd0d   ; cancel all CIA-IRQs in queue/unprocessed 
+	
+; 	Change interrupt routines
+	ASL $D019
+	LDA #$00
+	STA $D01A
+	RTS
+
+DISABLEDISPLAY
+	LDA #$0B				;%00001011 ; Disable VIC display until the end of transfer
+	STA $D011	
+	RTS
+ENABLEDISPLAY
+	LDA #$1B				;%00001011 ; Disable VIC display until the end of transfer
+	STA $D011	
+	RTS	
+
+SETUPTRANSFER	
+	JSR DISABLEINTERRUPTS
+	JSR DISABLEDISPLAY
+	LDA #$37
+	STA $01	
+					; Do not Disable kernal & basic rom	
+	
+	; Switch between 8byte & 4byte & 1byte transfer routine using micro supplied TRANSFERMODE value.
+	LDY TRANSFERMODE
+	LDA NMITAB, Y
+
+	STA SOFTNMIVECTOR
+	
+	LDA #$80
+	STA SOFTNMIVECTOR+1	
+		
+	LDA #01					
+   	STA BORDER
+   	LDY #$00	;Setup for transfer routine   	   	
+   	;JSR WAITLINE   	
+	RTS
+WAITLINE   	
+   	LDA #$80
+   	CMP $D012
+   	BNE WAITLINE
+   	JSR WASTELINES 
+   	INY
+   	BNE WAITLINE
+   	RTS	
+WASTELINES
+	LDX #$00
+CONSUME	
+	NOP
+	INX
+	BNE CONSUME		
+	RTS	
+	
+INITTRANSVAR
+	;LDA #$F0
+	LDA #<DATAAREA
+	STA DATA_LOW
+	STA ACTUAL_LOW
+	;LDA #$1C
+	LDA #>DATAAREA	
+	STA DATA_HIGH
+	STA ACTUAL_HIGH	
+	LDA #$03
+	STA DATA_LENGTH
+	TAX		
+	LDY #$00
+	RTS
+	
+ENDTRANSFER
+	LDA #<ROMNMIHANDLER
+	STA SOFTNMIVECTOR
+	LDA #>ROMNMIHANDLER
+	STA SOFTNMIVECTOR+1
+	RTS
+		
+	
+COPYMUSIC
+	LDX #$10		; Copy 16 blocks
+	;Set source
+	LDA #<SID
+	STA $FB
+	LDA #>SID
+	STA $FC
+	
+	;Set target
+	LDA #<SIDLOAD
+	STA $FD
+	LDA #>SIDLOAD
+	STA $FE
+	
+	LDY #$00
+COPYBLOCK	
+	LDA ($FB), Y
+	STA ($FD), Y
+	INY
+	BNE COPYBLOCK
+	INC $FC
+	INC $FE
+	DEX
+	BNE COPYBLOCK	
+	RTS
+	
+
+PRINTTITLE	; Input : None, Changed : A, X
+	LDX #$00
+NEXTCHAR	
+	LDA TITLE, X
+	BEQ OUTTITLEPRINT
+	CMP #$3F
+	BMI NOTSPACE
+	CLC
+	SBC #$3f
+NOTSPACE	
+	STA $0408, X
+	INX
+	BNE NEXTCHAR
+OUTTITLEPRINT
+	RTS
+	
+PRINTTITLETURBO	; Input : None, Changed : A, X
+	LDX #$00
+NEXTCHAR2	
+	LDA TITLETURBO, X
+	BEQ OUTTITLEPRINT2
+	CMP #$3F
+	BMI NOTSPACE2
+	CLC
+	SBC #$3f
+NOTSPACE2	
+	STA $0408, X
+	INX
+	BNE NEXTCHAR2
+OUTTITLEPRINT2
+	RTS
+	
+PRINTPAGE	; Input : None, Changed : A, X, Y
+	LDA CURPAGENAMELOW
+	STA NAMELOW
+	LDA CURPAGENAMEHIGH
+	STA NAMEHIGH
+
+	LDX #$00
+SETCOL	
+	JSR SETCURRENTROW
+
+	JSR PRINTFILENAME
+	
+	INX
+	CPX CURPAGEITEMS
+	BEQ FINISH	
+	LDA NAMELOW
+	CLC
+	ADC #$20
+	STA NAMELOW
+	BCC NEXTFILE
+	INC NAMEHIGH
+NEXTFILE
+	JMP SETCOL	
+FINISH
+	CPX #$14
+	BEQ ACTUALFINISH
+	JSR SETCURRENTROW
+	JSR CLEARLINE
+	INX 
+	CLV
+	BVC FINISH
+	
+ACTUALFINISH	
+	LDX #COMMANDENTERMASK
+	STX COMMANDBYTE	
+	RTS
+
+COMMANDBYTE	.BYTE 0
+CURRENTROW	.BYTE 0
+CURPAGENAMELOW	.BYTE <GAMELIST
+CURPAGENAMEHIGH .BYTE >GAMELIST
+BITPOS		.BYTE 0
+ISMUSICPLAYING	.BYTE 1
+
+NMITAB	
+	.BYTE <CARTRIDGENMIHANDLERX1, <CARTRIDGENMIHANDLERX4,<CARTRIDGENMIHANDLERX8
+
+COLS	
+	.WORD $0404, $042C, $0454, $047C, $04A4, $04CC, $04F4, $051C, $0544, $056C 
+	.WORD $0594, $05BC, $05E4, $060C, $0634, $065C, $0684, $06AC, $06D4, $06FC
+	.WORD $0724, $074C, $0774, $079C, $07C4
+	
+	
+TITLE	
+	.TEXT "IRQHACK64 FILE LIST"
+	.BYTE 0
+	
+TITLETURBO	
+	.TEXT "IRQHACK64 FILE LIST (TURBO)"
+	.BYTE 0
+	
+	*=$0D00
+SID	
+ 	.binary "SidFile.bin"
+
+; File name storage area
+;	*=$1CEF
+;	.BYTE 0
+	*=$1AEF
+	.BYTE 0
+DATAAREA 
+
+CURPAGEITEMS	= $1AF0
+PAGECOUNT	= $1AF1
+CURPAGEINDEX	= $1AF2
+TRANSFERMODE	= $1AF3
+GAMELIST	 = $1B00
+
+;CURPAGEITEMS	= DATAAREA
+;PAGECOUNT	= DATAAREA+1
+;CURPAGEINDEX	= DATAAREA+2
+;GAMELIST	 = DATAAREA+16
+
+;CURPAGEITEMS	= $1CF0
+;PAGECOUNT	= $1CF1
+;CURPAGEINDEX	= $1CF2
+;GAMELIST	 = $1D00
+
+
+
+	
