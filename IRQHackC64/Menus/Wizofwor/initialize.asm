@@ -17,9 +17,10 @@
 	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
 	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
 	+CopyMemoryUp spriteBaseActual, spriteBaseActualEnd, spriteBase
-	+CopyMemoryUp musicActual, musicActualEnd, music	
-	
-	
+!if SILENT <> 1 {
+	+CopyMemoryUp musicActual, musicActualEnd, music
+}
+
 ;	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
 ;	+CopyMemoryUp musicActual, musicActualEnd, music			
 ;	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
@@ -143,10 +144,11 @@
 
 ;--------------------------------------------------
 ; MUSIC
-;--------------------------------------------------	
+;--------------------------------------------------
+!if SILENT <> 1 {
 	lda #$00
 	jsr music 		;initialize music
-
+}
 
 ;--------------------------------------------------
 ; INTERRUPTS

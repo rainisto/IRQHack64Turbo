@@ -82,11 +82,11 @@ NMITAB:
 ;-------------------------------------------------------
 ; Fixed Adress Data
 ;-------------------------------------------------------
-
+!if SILENT <> 1 {
 musicActual:
 !bin "resources/Jamaica_10_intro_reloc.sid",3167,$7c+2
 musicActualEnd = *-1
-
+}
 spriteBaseActual:
 !bin "resources/sprites.bin",1536
 spriteBaseActualEnd = *-1

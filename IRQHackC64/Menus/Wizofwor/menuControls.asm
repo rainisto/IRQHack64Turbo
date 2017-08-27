@@ -4,21 +4,59 @@
 ;##############################################################################
 
 !zone keyboardScan {
+.KEY_MINUS = $2d ; -
+.KEY_PLUS  = $2b ; +
+.KEY_GT = $2e ; >
+.KEY_LT = $2c ; <
+.KEY_ENTER = $0d 
+.KEY_LEFT  = $9d
+.KEY_RIGHT = $1d
+.KEY_UP    = $91
+.KEY_DOWN  = $11
+.KEY_F1	   = 133
+.KEY_F7	   = 136
 
 .keyboardScan:
 
+	; scan first joyport 2
+	lda $DC00 ;joyport 2
+	and #17
+	beq .prevPage
+	lda $DC00 ;joyport 2
+	and #18
+	beq .nextPage
+	lda $DC00 ;joyport 2
+	and #16
+	beq j1
+	lda $DC00 ;joyport 2
+	and #2
+	beq .down
+	lda $DC00 ;joyport 2
+	and #1
+	beq .up
+
 	jsr SCNKEY		; Call kernal's key scan routine
  	jsr GETIN		; Get the pressed key by the kernal routine
- 	cmp #$2d 		; IF char is '-'
+ 	cmp #.KEY_MINUS	; IF char is '-'
  	beq .down 		; go down in menu
- 	cmp #$2b 		; IF char is '+'
- 	beq .up 		; go up in menu
- 	cmp #$2e 		; IF char is '>'
+	cmp #.KEY_DOWN
+	beq .down 		; go down in menu
+ 	cmp #.KEY_PLUS	; IF char is '+'
+	beq .up 		; go up in menu
+	cmp #.KEY_UP
+	beq .up
+ 	cmp #.KEY_GT 	; IF char is '>'
  	beq .nextPage 	; request next page from micro
- 	cmp #$2c 		; IF char is '<'
+	cmp #.KEY_F7
+	beq .nextPage 	; request next page from micro
+ 	cmp #.KEY_LT    ; IF char is '<'
  	beq .prevPage 	; request previous page from micro
- 	cmp #$0d 		; IF char is 'ENTER'
+	cmp #.KEY_F1
+	beq .prevPage 	; request previous page from micro
+ 	cmp #.KEY_ENTER	; IF char is 'ENTER'
  	beq j1 			; launch selected item
+	cmp #.KEY_RIGHT
+	beq j1 			; launch selected item
     cmp #$0f 		; IF char is 'F'
     ;beq .simulation ; Display simulation menu
  	jmp .end
@@ -31,29 +69,15 @@
 	bcc .execNext	;BLT
 	jmp .end
 	
-.execNext:
-
-	inc PAGEINDEX
-	ldx #COMMANDNEXTPAGE
-	stx COMMANDBYTE
-	jmp j1
-	
 .prevPage
 
 	ldx PAGEINDEX
 	bne .execPrev
 	jmp .end
-	
-.execPrev
 
-	dec PAGEINDEX
-	ldx #COMMANDPREVPAGE
-	stx COMMANDBYTE	
-	
 j1: jmp enter
 
 .down
-
 	;clear old coloring
 	ldy #22
 	lda #$0f
@@ -103,6 +127,20 @@ j1: jmp enter
 
 	jmp .end 	
 
+.execNext:
+
+	inc PAGEINDEX
+	ldx #COMMANDNEXTPAGE
+	stx COMMANDBYTE
+	jmp j1
+	
+.execPrev
+
+	dec PAGEINDEX
+	ldx #COMMANDPREVPAGE
+	stx COMMANDBYTE	
+	jmp j1
+	
 .end
 
 }

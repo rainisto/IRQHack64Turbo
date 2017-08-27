@@ -8,7 +8,8 @@
      6                          
      7                          SIMULATION = 0 			;0 to compile for read cartrige
      8                          						;1 to compile with simulation routines
-     9                          
+     9                          SILENT = 1				;0 to compile with music
+    10                          						;1 to compile without music
 
 ; ******** Source: standart.asm
      1                          ; standart.asm
@@ -116,7 +117,7 @@
    103                          GETIN  = $FFE4
 
 ; ******** Source: main.asm
-    10                          	;standard macros & kernal adresses definition 
+    11                          	;standard macros & kernal adresses definition 
 
 ; ******** Source: global.asm
      1                          ;###############################################################################
@@ -208,13 +209,13 @@
     87                          
 
 ; ******** Source: main.asm
-    11                          		;global labels & zp adresses
-    12                          
-    13                          ;--------------------------------------------------------------------------------
-    14                          
-    15                          ;+SET_START $0810
-    16  0801 0c080a009e303230...+SET_START $0810
-    17                          
+    12                          		;global labels & zp adresses
+    13                          
+    14                          ;--------------------------------------------------------------------------------
+    15                          
+    16                          ;+SET_START $0810
+    17  0801 0c080a009e303230...+SET_START $0810
+    18                          
 
 ; ******** Source: initialize.asm
      1                          ;--------------------------------------------------
@@ -233,166 +234,168 @@
     14                          ; -------------------------------------------------------------
     15                          ;Organize memory by moving stuff to their original locations
     16                          ; -------------------------------------------------------------
-    17  0824 a091adc7298d90c2...	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
-    18  0881 a0e8ad36278d6738...	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
-    19  08de a000ad4e238d3f27...	+CopyMemoryUp spriteBaseActual, spriteBaseActualEnd, spriteBase
-    20  093b a05fad4e1d8d5e20...	+CopyMemoryUp musicActual, musicActualEnd, music	
-    21                          	
-    22                          	
-    23                          ;	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
-    24                          ;	+CopyMemoryUp musicActual, musicActualEnd, music			
-    25                          ;	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
-    26                          ;	+CopyMemoryUp spriteBaseActual, spriteBaseActualEnd, spriteBase
-    27                          
-    28                          	
-    29                          	;copy character set data
-    30  0998 a200               	ldx #$00
-    31  099a bd8034             -	lda charset_data,x
-    32  099d 9d0028             	sta CHARSET,x
-    33  09a0 bd7f35             	lda charset_data+$ff,x
-    34  09a3 9dff28             	sta CHARSET+$ff,x
-    35  09a6 bd7e36             	lda charset_data+$1fe,x
-    36  09a9 9dfe29             	sta CHARSET+$1fe,x
-    37  09ac bd7d37             	lda charset_data+$2fd,x
-    38  09af 9dfd2a             	sta CHARSET+$2fd,x
-    39  09b2 bd7c38             	lda charset_data+$3fc,x
-    40  09b5 9dfc2b             	sta CHARSET+$3fc,x
-    41  09b8 e8                 	inx
-    42  09b9 e0ff               	cpx #$ff
-    43  09bb d0dd               	bne -
-    44                          
-    45  09bd a91b               	lda #$1b		;set VIC pointers
-    46  09bf 8d18d0             	sta $d018 		;screen ram is at $0400, charset is at $2800-$2fff
-    47                          
-    48  09c2 a908               	lda #$08		;switch to hires
-    49  09c4 2d16d0             	and $d016
-    50  09c7 8d16d0             	sta $d016
-    51                          
-    52                          	
-    53                          !zone initialScreenValues {		;copy initial screen values
-    54                          .fetchNewData:
-    55                          	;***read***
-    56                          	.fetchPointer1=*+1 	;read repeat value 
-    57  09ca ae3a0e             	ldx repeat_bytes 	;x=repeat value
-    58  09cd f03a               	beq .end 			;finish copying if x=0
-    59                          
-    60                          	.fetchPointer2=*+1 	
-    61  09cf adb50e             	lda char_bytes 		;A=char value
-    62                          	.fetchPointer3=*+1 
-    63  09d2 ac2f0f             	ldy color_bytes 	;Y=color value
-    64                          
-    65                          	;***copy***
-    66                          	.charFillPointer=*+1
-    67  09d5 8d0004             -	sta SCREEN_RAM
-    68                          	.colorFillPointer=*+1
-    69  09d8 8c00d8             	sty COLOR_RAM
-    70  09db eed609d003eed709   	+inc16 .charFillPointer
-    71  09e3 eed909d003eeda09   	+inc16 .colorFillPointer
-    72                          
-    73  09eb ca                 	dex
-    74  09ec d0e7               	bne -
-    75                          
-    76                          	;***increment pointers***
-    77  09ee eecb09d003eecc09   	+inc16 .fetchPointer1
-    78  09f6 eed009d003eed109   	+inc16 .fetchPointer2
-    79  09fe eed309d003eed409   	+inc16 .fetchPointer3
-    80                          
-    81  0a06 4cca09             	jmp .fetchNewData
-    82                          .end	
-    83                          }
-    84                          	;***Print title
-    85  0a09 ac03c0             	ldy TRANSFERMODE
-    86  0a0c d010               	BNE .printTurboTitle
-    87  0a0e a200               	ldx #00
-    88  0a10 bdc710             -	lda title,x
-    89  0a13 9d2904             	sta SCREEN_RAM+41,x
-    90  0a16 e8                 	inx
-    91  0a17 e012               	cpx #18
-    92  0a19 d0f5               	bne -
-    93  0a1b 4c2b0a             	jmp .outTitlePrint
-    94                          	
-    95                          .printTurboTitle
-    96  0a1e a200               	ldx #00
-    97  0a20 bdd910             -	lda titleTurbo,x
-    98  0a23 9d2904             	sta SCREEN_RAM+41,x
-    99  0a26 e8                 	inx
-   100  0a27 e012               	cpx #18
-   101  0a29 d0f5               	bne -	
-   102                          .outTitlePrint
-   103                          	;***Print initial filenames
-   104  0a2b 20010c             	jsr printPage
-   105                          
-   106                          	;***initialize color wash effect for active menu item
-   107  0a2e a900               	lda #00
-   108  0a30 8512               	sta activeMenuItem
-   109  0a32 a978               	lda #<COLOR_RAM+120
-   110  0a34 8514               	sta activeMenuItemAddr
-   111  0a36 a9d8               	lda #>COLOR_RAM+120
-   112  0a38 8515               	sta activeMenuItemAddr+1
-   113                          
+    17  0824 a091ad3d1d8d90c2...	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
+    18  0881 a0e8adac1a8d6738...	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
+    19  08de a000adc4168d3f27...	+CopyMemoryUp spriteBaseActual, spriteBaseActualEnd, spriteBase
+    20                          !if SILENT <> 1 {
+    21                          	+CopyMemoryUp musicActual, musicActualEnd, music
+    22                          }
+    23                          
+    24                          ;	+CopyMemoryUp fileNameDataActual, fileNameDataActualEnd, fileNameData
+    25                          ;	+CopyMemoryUp musicActual, musicActualEnd, music			
+    26                          ;	+CopyMemoryUp charsetBaseActual, charsetBaseActualEnd, charset_data
+    27                          ;	+CopyMemoryUp spriteBaseActual, spriteBaseActualEnd, spriteBase
+    28                          
+    29                          	
+    30                          	;copy character set data
+    31  093b a200               	ldx #$00
+    32  093d bd8034             -	lda charset_data,x
+    33  0940 9d0028             	sta CHARSET,x
+    34  0943 bd7f35             	lda charset_data+$ff,x
+    35  0946 9dff28             	sta CHARSET+$ff,x
+    36  0949 bd7e36             	lda charset_data+$1fe,x
+    37  094c 9dfe29             	sta CHARSET+$1fe,x
+    38  094f bd7d37             	lda charset_data+$2fd,x
+    39  0952 9dfd2a             	sta CHARSET+$2fd,x
+    40  0955 bd7c38             	lda charset_data+$3fc,x
+    41  0958 9dfc2b             	sta CHARSET+$3fc,x
+    42  095b e8                 	inx
+    43  095c e0ff               	cpx #$ff
+    44  095e d0dd               	bne -
+    45                          
+    46  0960 a91b               	lda #$1b		;set VIC pointers
+    47  0962 8d18d0             	sta $d018 		;screen ram is at $0400, charset is at $2800-$2fff
+    48                          
+    49  0965 a908               	lda #$08		;switch to hires
+    50  0967 2d16d0             	and $d016
+    51  096a 8d16d0             	sta $d016
+    52                          
+    53                          	
+    54                          !zone initialScreenValues {		;copy initial screen values
+    55                          .fetchNewData:
+    56                          	;***read***
+    57                          	.fetchPointer1=*+1 	;read repeat value 
+    58  096d ae0f0e             	ldx repeat_bytes 	;x=repeat value
+    59  0970 f03a               	beq .end 			;finish copying if x=0
+    60                          
+    61                          	.fetchPointer2=*+1 	
+    62  0972 ad8a0e             	lda char_bytes 		;A=char value
+    63                          	.fetchPointer3=*+1 
+    64  0975 ac040f             	ldy color_bytes 	;Y=color value
+    65                          
+    66                          	;***copy***
+    67                          	.charFillPointer=*+1
+    68  0978 8d0004             -	sta SCREEN_RAM
+    69                          	.colorFillPointer=*+1
+    70  097b 8c00d8             	sty COLOR_RAM
+    71  097e ee7909d003ee7a09   	+inc16 .charFillPointer
+    72  0986 ee7c09d003ee7d09   	+inc16 .colorFillPointer
+    73                          
+    74  098e ca                 	dex
+    75  098f d0e7               	bne -
+    76                          
+    77                          	;***increment pointers***
+    78  0991 ee6e09d003ee6f09   	+inc16 .fetchPointer1
+    79  0999 ee7309d003ee7409   	+inc16 .fetchPointer2
+    80  09a1 ee7609d003ee7709   	+inc16 .fetchPointer3
+    81                          
+    82  09a9 4c6d09             	jmp .fetchNewData
+    83                          .end	
+    84                          }
+    85                          	;***Print title
+    86  09ac ac03c0             	ldy TRANSFERMODE
+    87  09af d010               	BNE .printTurboTitle
+    88  09b1 a200               	ldx #00
+    89  09b3 bd9c10             -	lda title,x
+    90  09b6 9d2904             	sta SCREEN_RAM+41,x
+    91  09b9 e8                 	inx
+    92  09ba e012               	cpx #18
+    93  09bc d0f5               	bne -
+    94  09be 4cce09             	jmp .outTitlePrint
+    95                          	
+    96                          .printTurboTitle
+    97  09c1 a200               	ldx #00
+    98  09c3 bdae10             -	lda titleTurbo,x
+    99  09c6 9d2904             	sta SCREEN_RAM+41,x
+   100  09c9 e8                 	inx
+   101  09ca e012               	cpx #18
+   102  09cc d0f5               	bne -	
+   103                          .outTitlePrint
+   104                          	;***Print initial filenames
+   105  09ce 20d60b             	jsr printPage
+   106                          
+   107                          	;***initialize color wash effect for active menu item
+   108  09d1 a900               	lda #00
+   109  09d3 8512               	sta activeMenuItem
+   110  09d5 a978               	lda #<COLOR_RAM+120
+   111  09d7 8514               	sta activeMenuItemAddr
+   112  09d9 a9d8               	lda #>COLOR_RAM+120
+   113  09db 8515               	sta activeMenuItemAddr+1
    114                          
-   115                          ;--------------------------------------------------
-   116                          ; SPRITES
-   117                          ;--------------------------------------------------	
-   118  0a3a a9ff               	lda #$ff	
-   119  0a3c 8d15d0             	sta $d015	;enable all sprites
-   120  0a3f 8d1cd0             	sta $d01c	;enable multicolor for all
-   121                          
-   122  0a42 a900               	lda #$00	;undo sprite extend
-   123  0a44 8d17d0             	sta $d017
-   124  0a47 8d1dd0             	sta $d01d
-   125                          
-   126  0a4a a901               	lda #$01 	;set sprite multicolor 1
-   127  0a4c 8d25d0             	sta $d025	
-   128                          
-   129  0a4f a906               	lda #$06 	;set sprite multicolor 2
-   130  0a51 8d26d0             	sta $d026
-   131                          
-   132  0a54 a208               	ldx #$08	;set sprite colors
-   133  0a56 a90e               	lda #$0e
-   134  0a58 9d26d0             -	sta $d026,x
-   135  0a5b ca                 	dex
-   136  0a5c d0fa               	bne -
-   137                          
-   138  0a5e a9ee               	lda #%11101110
-   139  0a60 8d10d0             	sta $d010	;sprite-x in second page
-   140                          
-   141  0a63 a900               	lda #$00
-   142  0a65 8510               	sta spAnimationCounter
-   143                          
-   144                          ;--------------------------------------------------
-   145                          ; MUSIC
-   146                          ;--------------------------------------------------	
-   147  0a67 a900               	lda #$00
-   148  0a69 200014             	jsr music 		;initialize music
-   149                          
-   150                          
-   151                          ;--------------------------------------------------
-   152                          ; INTERRUPTS
+   115                          
+   116                          ;--------------------------------------------------
+   117                          ; SPRITES
+   118                          ;--------------------------------------------------	
+   119  09dd a9ff               	lda #$ff	
+   120  09df 8d15d0             	sta $d015	;enable all sprites
+   121  09e2 8d1cd0             	sta $d01c	;enable multicolor for all
+   122                          
+   123  09e5 a900               	lda #$00	;undo sprite extend
+   124  09e7 8d17d0             	sta $d017
+   125  09ea 8d1dd0             	sta $d01d
+   126                          
+   127  09ed a901               	lda #$01 	;set sprite multicolor 1
+   128  09ef 8d25d0             	sta $d025	
+   129                          
+   130  09f2 a906               	lda #$06 	;set sprite multicolor 2
+   131  09f4 8d26d0             	sta $d026
+   132                          
+   133  09f7 a208               	ldx #$08	;set sprite colors
+   134  09f9 a90e               	lda #$0e
+   135  09fb 9d26d0             -	sta $d026,x
+   136  09fe ca                 	dex
+   137  09ff d0fa               	bne -
+   138                          
+   139  0a01 a9ee               	lda #%11101110
+   140  0a03 8d10d0             	sta $d010	;sprite-x in second page
+   141                          
+   142  0a06 a900               	lda #$00
+   143  0a08 8510               	sta spAnimationCounter
+   144                          
+   145                          ;--------------------------------------------------
+   146                          ; MUSIC
+   147                          ;--------------------------------------------------
+   148                          !if SILENT <> 1 {
+   149                          	lda #$00
+   150                          	jsr music 		;initialize music
+   151                          }
+   152                          
    153                          ;--------------------------------------------------
-   154                          
-   155  0a6c 78                 	sei
+   154                          ; INTERRUPTS
+   155                          ;--------------------------------------------------
    156                          
-   157  0a6d a07f               	LDY #$7f    	; $7f = %01111111 
-   158  0a6f 8c0ddc                 STY $dc0d   	; Turn off CIAs Timer interrupts 
-   159  0a72 8c0ddd                 STY $dd0d  		; Turn off CIAs Timer interrupts 
-   160  0a75 ad0ddc                 LDA $dc0d  		; cancel all CIA-IRQs in queue/unprocessed 
-   161  0a78 ad0ddd                 LDA $dd0d   	; cancel all CIA-IRQs in queue/unprocessed 
-   162                          
-   163                              ;Change interrupt routines
-   164  0a7b 0e19d0             	ASL $D019
-   165  0a7e a900               	LDA #$00
-   166  0a80 8d1ad0             	STA $D01A
-   167                          
-   168                          	;cli
-   169                          	
-   170                          	
+   157  0a0a 78                 	sei
+   158                          
+   159  0a0b a07f               	LDY #$7f    	; $7f = %01111111 
+   160  0a0d 8c0ddc                 STY $dc0d   	; Turn off CIAs Timer interrupts 
+   161  0a10 8c0ddd                 STY $dd0d  		; Turn off CIAs Timer interrupts 
+   162  0a13 ad0ddc                 LDA $dc0d  		; cancel all CIA-IRQs in queue/unprocessed 
+   163  0a16 ad0ddd                 LDA $dd0d   	; cancel all CIA-IRQs in queue/unprocessed 
+   164                          
+   165                              ;Change interrupt routines
+   166  0a19 0e19d0             	ASL $D019
+   167  0a1c a900               	LDA #$00
+   168  0a1e 8d1ad0             	STA $D01A
+   169                          
+   170                          	;cli
    171                          	
+   172                          	
+   173                          	
 
 ; ******** Source: main.asm
-    18                          
     19                          
-    20                          main:
+    20                          
+    21                          main:
 
 ; ******** Source: updateLogo.asm
      1                          ;###############################################################################
@@ -401,156 +404,156 @@
      4                          ;###############################################################################
      5                          !zone show_logo {
      6                          	;**********  increment animation counter *********
-     7  0a83 e610               	inc spAnimationCounter
-     8  0a85 a510               	lda spAnimationCounter
-     9  0a87 c940               	cmp #64
-    10  0a89 d004               	bne +
-    11  0a8b a900               	lda #00
-    12  0a8d 8510               	sta spAnimationCounter
+     7  0a21 e610               	inc spAnimationCounter
+     8  0a23 a510               	lda spAnimationCounter
+     9  0a25 c940               	cmp #64
+    10  0a27 d004               	bne +
+    11  0a29 a900               	lda #00
+    12  0a2b 8510               	sta spAnimationCounter
     13                          +	
-    14  0a8f a610               	ldx spAnimationCounter
-    15  0a91 bdb40f             	lda spriteSinus,x
-    16  0a94 8518               	sta var1
+    14  0a2d a610               	ldx spAnimationCounter
+    15  0a2f bd890f             	lda spriteSinus,x
+    16  0a32 8518               	sta var1
     17                          
     18                          	;***********  color wash effect ******************
-    19  0a96 e611               	inc spColorWashCounter
-    20  0a98 a511               	lda spColorWashCounter
-    21  0a9a c980               	cmp #128
-    22  0a9c d004               	bne +
-    23  0a9e a900               	lda #00
-    24  0aa0 8511               	sta spColorWashCounter
+    19  0a34 e611               	inc spColorWashCounter
+    20  0a36 a511               	lda spColorWashCounter
+    21  0a38 c980               	cmp #128
+    22  0a3a d004               	bne +
+    23  0a3c a900               	lda #00
+    24  0a3e 8511               	sta spColorWashCounter
     25                          +	
-    26  0aa2 a611               	ldx spColorWashCounter
-    27  0aa4 bd3410             	lda spColorOffset,x
-    28  0aa7 aa                 	tax
+    26  0a40 a611               	ldx spColorWashCounter
+    27  0a42 bd0910             	lda spColorOffset,x
+    28  0a45 aa                 	tax
     29                          
-    30  0aa8 bdb510             	lda spColor1,x 	;set sprite multicolor 1
-    31  0aab 8d25d0             	sta $d025	
+    30  0a46 bd8a10             	lda spColor1,x 	;set sprite multicolor 1
+    31  0a49 8d25d0             	sta $d025	
     32                          
-    33  0aae bdbb10             	lda spColor2,x 	;set sprite multicolor 2
-    34  0ab1 8d26d0             	sta $d026
+    33  0a4c bd9010             	lda spColor2,x 	;set sprite multicolor 2
+    34  0a4f 8d26d0             	sta $d026
     35                          
-    36  0ab4 a008               	ldy #$08	;set sprite colors
-    37  0ab6 bdc110             	lda spColor3,x
-    38  0ab9 9926d0             -	sta $d026,y
-    39  0abc 88                 	dey
-    40  0abd d0fa               	bne -
+    36  0a52 a008               	ldy #$08	;set sprite colors
+    37  0a54 bd9610             	lda spColor3,x
+    38  0a57 9926d0             -	sta $d026,y
+    39  0a5a 88                 	dey
+    40  0a5b d0fa               	bne -
     41                          
     42                          	;********** print first and second row ***********
-    43  0abf a93c               	lda #60 		;wait for raster
-    44  0ac1 cd12d0             -	cmp $d012
-    45  0ac4 d0fb               	bne -
+    43  0a5d a93c               	lda #60 		;wait for raster
+    44  0a5f cd12d0             -	cmp $d012
+    45  0a62 d0fb               	bne -
     46                          
     47                          	;set sprite pointers
-    48  0ac6 a985               	lda #spriteBase/$40
-    49  0ac8 20570b             	jsr .setSpritePointers
+    48  0a64 a985               	lda #spriteBase/$40
+    49  0a66 20f50a             	jsr .setSpritePointers
     50                          
     51                          	;set spriteX
-    52  0acb 20260b             	jsr .setSpriteX
+    52  0a69 20c40a             	jsr .setSpriteX
     53                          
     54                          	;set sprite Y
-    55  0ace adae0f             	lda spriteY+0
-    56  0ad1 acaf0f             	ldy spriteY+1
-    57  0ad4 203e0b             	jsr .setSpriteY
+    55  0a6c ad830f             	lda spriteY+0
+    56  0a6f ac840f             	ldy spriteY+1
+    57  0a72 20dc0a             	jsr .setSpriteY
     58                          
     59                          	;*********** print third and fourth row **********
-    60  0ad7 a96a               	lda #106 		;wait for raster
-    61  0ad9 cd12d0             -	cmp $d012
-    62  0adc d0fb               	bne -
+    60  0a75 a96a               	lda #106 		;wait for raster
+    61  0a77 cd12d0             -	cmp $d012
+    62  0a7a d0fb               	bne -
     63                          
     64                          	;increase swing offset
-    65  0ade a610               	ldx spAnimationCounter
-    66  0ae0 bdc90f             	lda spriteSinus+21,x
-    67  0ae3 8518               	sta var1
+    65  0a7c a610               	ldx spAnimationCounter
+    66  0a7e bd9e0f             	lda spriteSinus+21,x
+    67  0a81 8518               	sta var1
     68                          
     69                          	;set sprite pointers
-    70  0ae5 a98d               	lda #spriteBase/$40+8
-    71  0ae7 20570b             	jsr .setSpritePointers
+    70  0a83 a98d               	lda #spriteBase/$40+8
+    71  0a85 20f50a             	jsr .setSpritePointers
     72                          
     73                          	;set sprite X
-    74  0aea 20260b             	jsr .setSpriteX
+    74  0a88 20c40a             	jsr .setSpriteX
     75                          
     76                          	;mind the gap :)
-    77  0aed ce00d0             	dec $d000 	
-    78  0af0 ce00d0             	dec $d000
-    79  0af3 ce08d0             	dec $d008
-    80  0af6 ce08d0             	dec $d008
+    77  0a8b ce00d0             	dec $d000 	
+    78  0a8e ce00d0             	dec $d000
+    79  0a91 ce08d0             	dec $d008
+    80  0a94 ce08d0             	dec $d008
     81                          
     82                          	;set sprite Y
-    83  0af9 adb00f             	lda spriteY+2
-    84  0afc acb10f             	ldy spriteY+3
-    85  0aff 203e0b             	jsr .setSpriteY
+    83  0a97 ad850f             	lda spriteY+2
+    84  0a9a ac860f             	ldy spriteY+3
+    85  0a9d 20dc0a             	jsr .setSpriteY
     86                          
     87                          	;********* print Fifth & sixth row ***************
-    88  0b02 a999               	lda #153 		;wait for raster
-    89  0b04 cd12d0             -	cmp $d012
-    90  0b07 d0fb               	bne -
+    88  0aa0 a999               	lda #153 		;wait for raster
+    89  0aa2 cd12d0             -	cmp $d012
+    90  0aa5 d0fb               	bne -
     91                          
     92                          	;set sprite pointers
-    93  0b09 a995               	lda #spriteBase/$40+16
-    94  0b0b 20570b             	jsr .setSpritePointers
+    93  0aa7 a995               	lda #spriteBase/$40+16
+    94  0aa9 20f50a             	jsr .setSpritePointers
     95                          
     96                          	;increase swing offset
-    97  0b0e a610               	ldx spAnimationCounter
-    98  0b10 bdde0f             	lda spriteSinus+42,x
-    99  0b13 8518               	sta var1
+    97  0aac a610               	ldx spAnimationCounter
+    98  0aae bdb30f             	lda spriteSinus+42,x
+    99  0ab1 8518               	sta var1
    100                          
    101                          	;set sprite X
-   102  0b15 20260b             	jsr .setSpriteX
+   102  0ab3 20c40a             	jsr .setSpriteX
    103                          
    104                          	;set sprite Y
-   105  0b18 adb20f             	lda spriteY+4
-   106  0b1b acb30f             	ldy spriteY+5
-   107  0b1e a204               	ldx #4
-   108  0b20 203e0b             	jsr .setSpriteY
+   105  0ab6 ad870f             	lda spriteY+4
+   106  0ab9 ac880f             	ldy spriteY+5
+   107  0abc a204               	ldx #4
+   108  0abe 20dc0a             	jsr .setSpriteY
    109                          
    110                          
    111                          
-   112  0b23 4c650b             	jmp .end ;skip subroutines
+   112  0ac1 4c030b             	jmp .end ;skip subroutines
    113                          
    114                          	;********* Subroutines *************************
    115                          .setSpriteX
-   116  0b26 a200               	ldx #$00
-   117  0b28 a000               	ldy #$00
-   118  0b2a 18                 -	clc
-   119  0b2b bdaa0f             	lda spriteX,x
-   120  0b2e 6518               	adc var1 
-   121  0b30 9900d0             	sta $d000,y
-   122  0b33 9908d0             	sta $d008,y
-   123  0b36 c8                 	iny
-   124  0b37 c8                 	iny
-   125  0b38 e8                 	inx
-   126  0b39 e004               	cpx #04
-   127  0b3b d0ed               	bne -
-   128  0b3d 60                 	rts
+   116  0ac4 a200               	ldx #$00
+   117  0ac6 a000               	ldy #$00
+   118  0ac8 18                 -	clc
+   119  0ac9 bd7f0f             	lda spriteX,x
+   120  0acc 6518               	adc var1 
+   121  0ace 9900d0             	sta $d000,y
+   122  0ad1 9908d0             	sta $d008,y
+   123  0ad4 c8                 	iny
+   124  0ad5 c8                 	iny
+   125  0ad6 e8                 	inx
+   126  0ad7 e004               	cpx #04
+   127  0ad9 d0ed               	bne -
+   128  0adb 60                 	rts
    129                          
    130                          .setSpriteY	
-   131  0b3e 8d01d0             	sta $d001
-   132  0b41 8d03d0             	sta $d003
-   133  0b44 8d05d0             	sta $d005
-   134  0b47 8d07d0             	sta $d007
-   135  0b4a 8c09d0             	sty $d009
-   136  0b4d 8c0bd0             	sty $d00b
-   137  0b50 8c0dd0             	sty $d00d
-   138  0b53 8c0fd0             	sty $d00f
-   139  0b56 60                 	rts
+   131  0adc 8d01d0             	sta $d001
+   132  0adf 8d03d0             	sta $d003
+   133  0ae2 8d05d0             	sta $d005
+   134  0ae5 8d07d0             	sta $d007
+   135  0ae8 8c09d0             	sty $d009
+   136  0aeb 8c0bd0             	sty $d00b
+   137  0aee 8c0dd0             	sty $d00d
+   138  0af1 8c0fd0             	sty $d00f
+   139  0af4 60                 	rts
    140                          
    141                          .setSpritePointers
-   142  0b57 a200               	ldx #$00
+   142  0af5 a200               	ldx #$00
    143                          	;lda #spriteBase/$40
-   144  0b59 9df807             -	sta $07f8,x
-   145  0b5c 18                 	clc
-   146  0b5d 6901               	adc #$01 
-   147  0b5f e8                 	inx 
-   148  0b60 e008               	cpx #08
-   149  0b62 d0f5               	bne -	
-   150  0b64 60                 	rts
+   144  0af7 9df807             -	sta $07f8,x
+   145  0afa 18                 	clc
+   146  0afb 6901               	adc #$01 
+   147  0afd e8                 	inx 
+   148  0afe e008               	cpx #08
+   149  0b00 d0f5               	bne -	
+   150  0b02 60                 	rts
    151                          
    152                          	;********* end *************************
    153                          .end
 
 ; ******** Source: main.asm
-    21                          	;sprite logo animation
+    22                          	;sprite logo animation
 
 ; ******** Source: menuControls.asm
      1                          ;##############################################################################
@@ -559,125 +562,164 @@
      4                          ;##############################################################################
      5                          
      6                          !zone keyboardScan {
-     7                          
-     8                          .keyboardScan:
-     9                          
-    10  0b65 209fff             	jsr SCNKEY		; Call kernal's key scan routine
-    11  0b68 20e4ff              	jsr GETIN		; Get the pressed key by the kernal routine
-    12  0b6b c92d                	cmp #$2d 		; IF char is '-'
-    13  0b6d f03f                	beq .down 		; go down in menu
-    14  0b6f c92b                	cmp #$2b 		; IF char is '+'
-    15  0b71 f05e                	beq .up 		; go up in menu
-    16  0b73 c92e                	cmp #$2e 		; IF char is '>'
-    17  0b75 f00d                	beq .nextPage 	; request next page from micro
-    18  0b77 c92c                	cmp #$2c 		; IF char is '<'
-    19  0b79 f020                	beq .prevPage 	; request previous page from micro
-    20  0b7b c90d                	cmp #$0d 		; IF char is 'ENTER'
-    21  0b7d f02c                	beq j1 			; launch selected item
-    22  0b7f c90f                   cmp #$0f 		; IF char is 'F'
-    23                              ;beq .simulation ; Display simulation menu
-    24  0b81 4cf20b              	jmp .end
-    25                          
-    26                          .nextPage:
-    27                          
-    28  0b84 ae02c0             	ldx PAGEINDEX
-    29  0b87 e8                 	inx
-    30  0b88 ec01c0             	cpx numberOfPages	  	
-    31  0b8b 9003               	bcc .execNext	;BLT
-    32  0b8d 4cf20b             	jmp .end
-    33                          	
-    34                          .execNext:
-    35                          
-    36  0b90 ee02c0             	inc PAGEINDEX
-    37  0b93 a243               	ldx #COMMANDNEXTPAGE
-    38  0b95 8efc0c             	stx COMMANDBYTE
-    39  0b98 4cab0b             	jmp j1
-    40                          	
-    41                          .prevPage
-    42                          
-    43  0b9b ae02c0             	ldx PAGEINDEX
-    44  0b9e d003               	bne .execPrev
-    45  0ba0 4cf20b             	jmp .end
-    46                          	
-    47                          .execPrev
-    48                          
-    49  0ba3 ce02c0             	dec PAGEINDEX
-    50  0ba6 a241               	ldx #COMMANDPREVPAGE
-    51  0ba8 8efc0c             	stx COMMANDBYTE	
-    52                          	
-    53  0bab 4c540c             j1: jmp enter
-    54                          
-    55                          .down
-    56                          
-    57                          	;clear old coloring
-    58  0bae a016               	ldy #22
-    59  0bb0 a90f               	lda #$0f
-    60  0bb2 9114               -	sta (activeMenuItemAddr),y
-    61  0bb4 88                 	dey
-    62  0bb5 d0fb               	bne -
+     7                          .KEY_MINUS = $2d ; -
+     8                          .KEY_PLUS  = $2b ; +
+     9                          .KEY_GT = $2e ; >
+    10                          .KEY_LT = $2c ; <
+    11                          .KEY_ENTER = $0d 
+    12                          .KEY_LEFT  = $9d
+    13                          .KEY_RIGHT = $1d
+    14                          .KEY_UP    = $91
+    15                          .KEY_DOWN  = $11
+    16                          .KEY_F1	   = 133
+    17                          .KEY_F7	   = 136
+    18                          
+    19                          .keyboardScan:
+    20                          
+    21                          	; scan first joyport 2
+    22  0b03 ad00dc             	lda $DC00 ;joyport 2
+    23  0b06 2911               	and #17
+    24  0b08 f05b               	beq .prevPage
+    25  0b0a ad00dc             	lda $DC00 ;joyport 2
+    26  0b0d 2912               	and #18
+    27  0b0f f048               	beq .nextPage
+    28  0b11 ad00dc             	lda $DC00 ;joyport 2
+    29  0b14 2910               	and #16
+    30  0b16 f055               	beq j1
+    31  0b18 ad00dc             	lda $DC00 ;joyport 2
+    32  0b1b 2902               	and #2
+    33  0b1d f051               	beq .down
+    34  0b1f ad00dc             	lda $DC00 ;joyport 2
+    35  0b22 2901               	and #1
+    36  0b24 f06d               	beq .up
+    37                          
+    38  0b26 209fff             	jsr SCNKEY		; Call kernal's key scan routine
+    39  0b29 20e4ff              	jsr GETIN		; Get the pressed key by the kernal routine
+    40  0b2c c92d                	cmp #.KEY_MINUS	; IF char is '-'
+    41  0b2e f040                	beq .down 		; go down in menu
+    42  0b30 c911               	cmp #.KEY_DOWN
+    43  0b32 f03c               	beq .down 		; go down in menu
+    44  0b34 c92b                	cmp #.KEY_PLUS	; IF char is '+'
+    45  0b36 f05b               	beq .up 		; go up in menu
+    46  0b38 c991               	cmp #.KEY_UP
+    47  0b3a f057               	beq .up
+    48  0b3c c92e                	cmp #.KEY_GT 	; IF char is '>'
+    49  0b3e f019                	beq .nextPage 	; request next page from micro
+    50  0b40 c988               	cmp #.KEY_F7
+    51  0b42 f015               	beq .nextPage 	; request next page from micro
+    52  0b44 c92c                	cmp #.KEY_LT    ; IF char is '<'
+    53  0b46 f01d                	beq .prevPage 	; request previous page from micro
+    54  0b48 c985               	cmp #.KEY_F1
+    55  0b4a f019               	beq .prevPage 	; request previous page from micro
+    56  0b4c c90d                	cmp #.KEY_ENTER	; IF char is 'ENTER'
+    57  0b4e f01d                	beq j1 			; launch selected item
+    58  0b50 c91d               	cmp #.KEY_RIGHT
+    59  0b52 f019               	beq j1 			; launch selected item
+    60  0b54 c90f                   cmp #$0f 		; IF char is 'F'
+    61                              ;beq .simulation ; Display simulation menu
+    62  0b56 4cca0b              	jmp .end
     63                          
-    64                          	;increment ACTIVE_ITEM
-    65  0bb7 ae00c0             	ldx numberOfItems 	;check if the cursor is
-    66  0bba ca                 	dex 				;already at end of page
-    67  0bbb e412               	cpx activeMenuItem 	
-    68  0bbd f033               	beq .end
-    69  0bbf e612               	inc activeMenuItem
-    70                          
-    71  0bc1 18                 	clc
-    72  0bc2 a514               	lda activeMenuItemAddr
-    73  0bc4 6928               	adc #40
-    74  0bc6 8514               	sta activeMenuItemAddr
-    75  0bc8 a515               	lda activeMenuItemAddr+1
-    76  0bca 6900               	adc #00
-    77  0bcc 8515               	sta activeMenuItemAddr+1
-    78                          
-    79  0bce 4cf20b             	jmp .end
-    80                          
-    81                          .up
-    82                          
-    83                          	;clear old coloring
-    84  0bd1 a016               	ldy #22
-    85  0bd3 a90f               	lda #$0f
-    86  0bd5 9114               -	sta (activeMenuItemAddr),y
-    87  0bd7 88                 	dey
-    88  0bd8 d0fb               	bne -
-    89                          
-    90                          	;decrement ACTIVE_ITEM
-    91  0bda a900               	lda #00 			;check if the cursor is
-    92  0bdc c512               	cmp activeMenuItem 	;already at end of page
-    93  0bde f012               	beq .end
-    94  0be0 c612               	dec activeMenuItem
-    95                          
-    96  0be2 38                 	sec
-    97  0be3 a514               	lda activeMenuItemAddr
-    98  0be5 e928               	sbc #40
-    99  0be7 8514               	sta activeMenuItemAddr
-   100  0be9 a515               	lda activeMenuItemAddr+1
-   101  0beb e900               	sbc #00
-   102  0bed 8515               	sta activeMenuItemAddr+1
-   103                          
-   104  0bef 4cf20b             	jmp .end 	
-   105                          
-   106                          .end
-   107                          
-   108                          }
-   109                          
-   110                          !zone colorwash {
-   111  0bf2 a016               	ldy #22
-   112  0bf4 a907               	lda #$07
-   113  0bf6 9114               -	sta (activeMenuItemAddr),y
-   114  0bf8 88                 	dey
-   115  0bf9 d0fb               	bne -
+    64                          .nextPage:
+    65                          
+    66  0b59 ae02c0             	ldx PAGEINDEX
+    67  0b5c e8                 	inx
+    68  0b5d ec01c0             	cpx numberOfPages	  	
+    69  0b60 9052               	bcc .execNext	;BLT
+    70  0b62 4cca0b             	jmp .end
+    71                          	
+    72                          .prevPage
+    73                          
+    74  0b65 ae02c0             	ldx PAGEINDEX
+    75  0b68 d055               	bne .execPrev
+    76  0b6a 4cca0b             	jmp .end
+    77                          
+    78  0b6d 4c290c             j1: jmp enter
+    79                          
+    80                          .down
+    81                          	;clear old coloring
+    82  0b70 a016               	ldy #22
+    83  0b72 a90f               	lda #$0f
+    84  0b74 9114               -	sta (activeMenuItemAddr),y
+    85  0b76 88                 	dey
+    86  0b77 d0fb               	bne -
+    87                          
+    88                          	;increment ACTIVE_ITEM
+    89  0b79 ae00c0             	ldx numberOfItems 	;check if the cursor is
+    90  0b7c ca                 	dex 				;already at end of page
+    91  0b7d e412               	cpx activeMenuItem 	
+    92  0b7f f049               	beq .end
+    93  0b81 e612               	inc activeMenuItem
+    94                          
+    95  0b83 18                 	clc
+    96  0b84 a514               	lda activeMenuItemAddr
+    97  0b86 6928               	adc #40
+    98  0b88 8514               	sta activeMenuItemAddr
+    99  0b8a a515               	lda activeMenuItemAddr+1
+   100  0b8c 6900               	adc #00
+   101  0b8e 8515               	sta activeMenuItemAddr+1
+   102                          
+   103  0b90 4cca0b             	jmp .end
+   104                          
+   105                          .up
+   106                          
+   107                          	;clear old coloring
+   108  0b93 a016               	ldy #22
+   109  0b95 a90f               	lda #$0f
+   110  0b97 9114               -	sta (activeMenuItemAddr),y
+   111  0b99 88                 	dey
+   112  0b9a d0fb               	bne -
+   113                          
+   114                          	;decrement ACTIVE_ITEM
+   115  0b9c a900               	lda #00 			;check if the cursor is
+   116  0b9e c512               	cmp activeMenuItem 	;already at end of page
+   117  0ba0 f028               	beq .end
+   118  0ba2 c612               	dec activeMenuItem
+   119                          
+   120  0ba4 38                 	sec
+   121  0ba5 a514               	lda activeMenuItemAddr
+   122  0ba7 e928               	sbc #40
+   123  0ba9 8514               	sta activeMenuItemAddr
+   124  0bab a515               	lda activeMenuItemAddr+1
+   125  0bad e900               	sbc #00
+   126  0baf 8515               	sta activeMenuItemAddr+1
+   127                          
+   128  0bb1 4cca0b             	jmp .end 	
+   129                          
+   130                          .execNext:
+   131                          
+   132  0bb4 ee02c0             	inc PAGEINDEX
+   133  0bb7 a243               	ldx #COMMANDNEXTPAGE
+   134  0bb9 8ed10c             	stx COMMANDBYTE
+   135  0bbc 4c6d0b             	jmp j1
+   136                          	
+   137                          .execPrev
+   138                          
+   139  0bbf ce02c0             	dec PAGEINDEX
+   140  0bc2 a241               	ldx #COMMANDPREVPAGE
+   141  0bc4 8ed10c             	stx COMMANDBYTE	
+   142  0bc7 4c6d0b             	jmp j1
+   143                          	
+   144                          .end
+   145                          
+   146                          }
+   147                          
+   148                          !zone colorwash {
+   149  0bca a016               	ldy #22
+   150  0bcc a907               	lda #$07
+   151  0bce 9114               -	sta (activeMenuItemAddr),y
+   152  0bd0 88                 	dey
+   153  0bd1 d0fb               	bne -
 
 ; ******** Source: main.asm
-    22                          
-    23  0bfb 200314             	jsr musicPlay
-    24                          
-    25                          
-    26  0bfe 4c830a             jmp main
+    23                          
+    24                          !if SILENT <> 1 {
+    25                          	jsr musicPlay
+    26                          }
     27                          
-    28                          ;--------------------------------------------------------------------------------
+    28  0bd3 4c210a             jmp main
     29                          
+    30                          ;--------------------------------------------------------------------------------
+    31                          
 
 ; ******** Source: subroutines.asm
      1                          ;###############################################################################
@@ -690,56 +732,56 @@
      8                          
      9                          printPage:
     10                          
-    11  0c01 a201               	LDX #COMMANDENTERMASK
-    12  0c03 8efc0c             	STX COMMANDBYTE
+    11  0bd6 a201               	LDX #COMMANDENTERMASK
+    12  0bd8 8ed10c             	STX COMMANDBYTE
     13                          	;Onceki sayfanin icerigi temizlensin diye default 20'ye set ettim - nejat
     14                          	;ldx numberOfItems
-    15  0c06 a214               	ldx #20
-    16  0c08 a014               --	ldy #20
+    15  0bdb a214               	ldx #20
+    16  0bdd a014               --	ldy #20
     17                          	.fetchPointer=*+1
-    18  0c0a b90fc0             -	lda itemList-1,y
+    18  0bdf b90fc0             -	lda itemList-1,y
     19                          	;petscii -> screen code - nejat
-    20  0c0d c93f               	cmp #$3f
-    21  0c0f 3003               	bmi +
-    22  0c11 18                 	clc
-    23  0c12 e93f               	sbc #$3f
+    20  0be2 c93f               	cmp #$3f
+    21  0be4 3003               	bmi +
+    22  0be6 18                 	clc
+    23  0be7 e93f               	sbc #$3f
     24                          +
     25                          	.fillPointer=*+1
-    26  0c14 997904             	sta SCREEN_RAM+121,y
+    26  0be9 997904             	sta SCREEN_RAM+121,y
     27                          
-    28  0c17 88                 	dey
-    29  0c18 d0f0               	bne -
+    28  0bec 88                 	dey
+    29  0bed d0f0               	bne -
     30                          
-    31  0c1a 18                 	clc
-    32  0c1b ad0b0c             	lda .fetchPointer
-    33  0c1e 6920               	adc #32
-    34  0c20 8d0b0c             	sta .fetchPointer
-    35  0c23 ad0c0c             	lda .fetchPointer+1
-    36  0c26 6900               	adc #00
-    37  0c28 8d0c0c             	sta .fetchPointer+1
+    31  0bef 18                 	clc
+    32  0bf0 ade00b             	lda .fetchPointer
+    33  0bf3 6920               	adc #32
+    34  0bf5 8de00b             	sta .fetchPointer
+    35  0bf8 ade10b             	lda .fetchPointer+1
+    36  0bfb 6900               	adc #00
+    37  0bfd 8de10b             	sta .fetchPointer+1
     38                          
-    39  0c2b 18                 	clc
-    40  0c2c ad150c             	lda .fillPointer
-    41  0c2f 6928               	adc #40
-    42  0c31 8d150c             	sta .fillPointer
-    43  0c34 ad160c             	lda .fillPointer+1
-    44  0c37 6900               	adc #00
-    45  0c39 8d160c             	sta .fillPointer+1
+    39  0c00 18                 	clc
+    40  0c01 adea0b             	lda .fillPointer
+    41  0c04 6928               	adc #40
+    42  0c06 8dea0b             	sta .fillPointer
+    43  0c09 adeb0b             	lda .fillPointer+1
+    44  0c0c 6900               	adc #00
+    45  0c0e 8deb0b             	sta .fillPointer+1
     46                          
-    47  0c3c ca                 	dex
-    48  0c3d d0c9               	bne --
+    47  0c11 ca                 	dex
+    48  0c12 d0c9               	bne --
     49                          
     50                          	;Self modify ile deðiþmiþ adresleri tekrar init - nejat
-    51  0c3f a90f               	lda #<itemList-1
-    52  0c41 8d0b0c             	sta .fetchPointer
-    53  0c44 a9c0               	lda #>itemList-1
-    54  0c46 8d0c0c             	sta .fetchPointer+1
+    51  0c14 a90f               	lda #<itemList-1
+    52  0c16 8de00b             	sta .fetchPointer
+    53  0c19 a9c0               	lda #>itemList-1
+    54  0c1b 8de10b             	sta .fetchPointer+1
     55                          	
-    56  0c49 a979               	lda #<SCREEN_RAM+121
-    57  0c4b 8d150c             	sta .fillPointer
-    58  0c4e a904               	lda #>SCREEN_RAM+121
-    59  0c50 8d160c             	sta .fillPointer+1
-    60  0c53 60                 	rts
+    56  0c1e a979               	lda #<SCREEN_RAM+121
+    57  0c20 8dea0b             	sta .fillPointer
+    58  0c23 a904               	lda #>SCREEN_RAM+121
+    59  0c25 8deb0b             	sta .fillPointer+1
+    60  0c28 60                 	rts
     61                          }
     62                          
     63                          ;-------------------------------------------------------
@@ -748,11 +790,11 @@
     66                          enter:
     67                          
     68                          	;clear old coloring
-    69  0c54 a016               	ldy #22
-    70  0c56 a90f               	lda #$0f
-    71  0c58 9114               -	sta (activeMenuItemAddr),y
-    72  0c5a 88                 	dey
-    73  0c5b d0fb               	bne -
+    69  0c29 a016               	ldy #22
+    70  0c2b a90f               	lda #$0f
+    71  0c2d 9114               -	sta (activeMenuItemAddr),y
+    72  0c2f 88                 	dey
+    73  0c30 d0fb               	bne -
     74                          	
     75                          
     76                          	;Launches the selected item	
@@ -760,119 +802,119 @@
     78                          !if SIMULATION <> 1 {
     79                          	
     80                          	;Transfer starts with the lowest bit
-    81  0c5d a900               	lda #$00
-    82  0c5f 8dfd0c             	sta BITPOS
+    81  0c32 a900               	lda #$00
+    82  0c34 8dd20c             	sta BITPOS
     83                          
     84                          	;Clear 8th bit of raster line
-    85  0c62 a97f               	lda #$7F
-    86  0c64 2d11d0             	and $D011
-    87  0c67 8d11d0             	sta $D011
+    85  0c37 a97f               	lda #$7F
+    86  0c39 2d11d0             	and $D011
+    87  0c3c 8d11d0             	sta $D011
     88                          
     89                          	;Kill cia interrupts
-    90  0c6a 20a70d             	jsr killCIA
+    90  0c3f 207c0d             	jsr killCIA
     91                          
     92                          	;Decide if it's a file selection or special command (previous / next)
-    93  0c6d adfc0c             	lda COMMANDBYTE
-    94  0c70 2940               	and #$40
-    95  0c72 d00b               	bne SPECIALCMD
-    96  0c74 20cd0d             	jsr GETCURRENTROW
-    97  0c77 e8                 	inx
-    98  0c78 8a                 	txa
-    99  0c79 38                 	sec
-   100  0c7a 2a                 	rol
-   101  0c7b aa                 	tax
-   102  0c7c 8efc0c             	stx COMMANDBYTE
+    93  0c42 add10c             	lda COMMANDBYTE
+    94  0c45 2940               	and #$40
+    95  0c47 d00b               	bne SPECIALCMD
+    96  0c49 20a20d             	jsr GETCURRENTROW
+    97  0c4c e8                 	inx
+    98  0c4d 8a                 	txa
+    99  0c4e 38                 	sec
+   100  0c4f 2a                 	rol
+   101  0c50 aa                 	tax
+   102  0c51 8ed10c             	stx COMMANDBYTE
    103                          
    104                          SPECIALCMD		
    105                          	; Last bit is not used and always sent as 1. This was tested to be less problematic.
    106                          	; Init code for S0 state is redundant in the code.
-   107  0c7f 38                 	SEC
-   108  0c80 9021               	BCC S0INIT	
+   107  0c54 38                 	SEC
+   108  0c55 9021               	BCC S0INIT	
    109                          
    110                          	;Raster interrupt to occur at A0 line.
    111                          S160INIT
-   112  0c82 a97f               	LDA #$7F
-   113  0c84 2d11d0             	AND $D011
-   114  0c87 8d11d0             	STA $D011 
-   115  0c8a a9a0               	LDA #$A0
-   116  0c8c 8d12d0             	STA $D012
-   117  0c8f a953               	LDA #<IRQHANDLER2
-   118  0c91 8d1403             	STA IRQVECTOR
-   119  0c94 a90d               	LDA #>IRQHANDLER2
-   120  0c96 8d1503             	STA IRQVECTOR+1
+   112  0c57 a97f               	LDA #$7F
+   113  0c59 2d11d0             	AND $D011
+   114  0c5c 8d11d0             	STA $D011 
+   115  0c5f a9a0               	LDA #$A0
+   116  0c61 8d12d0             	STA $D012
+   117  0c64 a928               	LDA #<IRQHANDLER2
+   118  0c66 8d1403             	STA IRQVECTOR
+   119  0c69 a90d               	LDA #>IRQHANDLER2
+   120  0c6b 8d1503             	STA IRQVECTOR+1
    121                          
    122                          WAITRASTER1 		;Wait till A1 line
-   123  0c99 ad12d0             	LDA $D012
-   124  0c9c c9a1               	CMP #$A1
-   125  0c9e d0f9               	BNE WAITRASTER1
+   123  0c6e ad12d0             	LDA $D012
+   124  0c71 c9a1               	CMP #$A1
+   125  0c73 d0f9               	BNE WAITRASTER1
    126                          		
-   127  0ca0 4cc10c             	JMP ENABLERASTER	
+   127  0c75 4c960c             	JMP ENABLERASTER	
    128                          
    129                          S0INIT 				;S0	
-   130  0ca3 a97f               	LDA #$7F
-   131  0ca5 2d11d0             	AND $D011
-   132  0ca8 8d11d0             	STA $D011 		
-   133  0cab a900               	LDA #$00
-   134  0cad 8d12d0             	STA $D012
-   135  0cb0 a9fe               	LDA #<IRQHANDLER1
-   136  0cb2 8d1403             	STA IRQVECTOR
-   137  0cb5 a90c               	LDA #>IRQHANDLER1
-   138  0cb7 8d1503             	STA IRQVECTOR+1
+   130  0c78 a97f               	LDA #$7F
+   131  0c7a 2d11d0             	AND $D011
+   132  0c7d 8d11d0             	STA $D011 		
+   133  0c80 a900               	LDA #$00
+   134  0c82 8d12d0             	STA $D012
+   135  0c85 a9d3               	LDA #<IRQHANDLER1
+   136  0c87 8d1403             	STA IRQVECTOR
+   137  0c8a a90c               	LDA #>IRQHANDLER1
+   138  0c8c 8d1503             	STA IRQVECTOR+1
    139                          
    140                          WAITRASTER2
-   141  0cba ad12d0             	LDA $D012
-   142  0cbd c901               	CMP #$01
-   143  0cbf d0f9               	BNE WAITRASTER2
+   141  0c8f ad12d0             	LDA $D012
+   142  0c92 c901               	CMP #$01
+   143  0c94 d0f9               	BNE WAITRASTER2
    144                          	
    145                          ENABLERASTER	
-   146  0cc1 a901               	LDA #$01
-   147  0cc3 8d1ad0             	STA $D01A	;Enable raster interrupts
-   148  0cc6 58                 	CLI
+   146  0c96 a901               	LDA #$01
+   147  0c98 8d1ad0             	STA $D01A	;Enable raster interrupts
+   148  0c9b 58                 	CLI
    149                          
-   150  0cc7 a000               	LDY #$00	
-   151  0cc9 b8                 	CLV	
-   152  0cca 8464               	STY BITTARGET
+   150  0c9c a000               	LDY #$00	
+   151  0c9e b8                 	CLV	
+   152  0c9f 8464               	STY BITTARGET
    153                          
    154                          WAITIRQ 		; Wait till the command byte transferred to the micro
-   155  0ccc 2464               	BIT BITTARGET	
-   156  0cce 50fc               	BVC WAITIRQ	
-   157  0cd0 b8                 	CLV	
+   155  0ca1 2464               	BIT BITTARGET	
+   156  0ca3 50fc               	BVC WAITIRQ	
+   157  0ca5 b8                 	CLV	
    158                          
    159                          ; Command is transferred. Prepare loader for the transferring of the actual stuff
    160                          ; If it's a program then micro resets c64 so below code is not relevant.
    161                          ; If micro will be transferring a directory transfers a directory dump 	
-   162  0cd1 78                 	SEI
-   163  0cd2 20d00d             	JSR SETUPTRANSFER
+   162  0ca6 78                 	SEI
+   163  0ca7 20a50d             	JSR SETUPTRANSFER
    164                          	
    165                          ; Init transfer variables that loader will use. 	
-   166  0cd5 20000e             	JSR INITTRANSVAR
-   167  0cd8 a000               	LDY #$00	
-   168  0cda b8                 	CLV	
-   169  0cdb 8464               	STY BITTARGET
+   166  0caa 20d50d             	JSR INITTRANSVAR
+   167  0cad a000               	LDY #$00	
+   168  0caf b8                 	CLV	
+   169  0cb0 8464               	STY BITTARGET
    170                          
    171                          ; Wait signal from loader that the transfer is finished
    172                          WAITNMI
-   173  0cdd 2464               	BIT BITTARGET	
-   174  0cdf 50fc               	BVC WAITNMI	
-   175  0ce1 b8                 	CLV
+   173  0cb2 2464               	BIT BITTARGET	
+   174  0cb4 50fc               	BVC WAITNMI	
+   175  0cb6 b8                 	CLV
    176                          	
-   177  0ce2 20140e             	JSR ENDTRANSFER
-   178  0ce5 202a0e             	JSR ENABLEDISPLAY
+   177  0cb7 20e90d             	JSR ENDTRANSFER
+   178  0cba 20ff0d             	JSR ENABLEDISPLAY
    179                          	
    180                          	; Reset active menu item
-   181  0ce8 a900               	lda #00
-   182  0cea 8512               	sta activeMenuItem
-   183  0cec a978               	lda #<COLOR_RAM+120
-   184  0cee 8514               	sta activeMenuItemAddr
-   185  0cf0 a9d8               	lda #>COLOR_RAM+120
-   186  0cf2 8515               	sta activeMenuItemAddr+1
+   181  0cbd a900               	lda #00
+   182  0cbf 8512               	sta activeMenuItem
+   183  0cc1 a978               	lda #<COLOR_RAM+120
+   184  0cc3 8514               	sta activeMenuItemAddr
+   185  0cc5 a9d8               	lda #>COLOR_RAM+120
+   186  0cc7 8515               	sta activeMenuItemAddr+1
    187                          	
-   188  0cf4 20010c             	jsr printPage ;Update the screen with the new content got from micro		
-   189  0cf7 4c830a             	jmp main
-   190  0cfa 58                 	cli
+   188  0cc9 20d60b             	jsr printPage ;Update the screen with the new content got from micro		
+   189  0ccc 4c210a             	jmp main
+   190  0ccf 58                 	cli
    191                          	;jmp INPUT_GET
    192                            	
-   193  0cfb 60                  	rts	
+   193  0cd0 60                  	rts	
    194                          
    195                          } else {
    196                          
@@ -955,8 +997,8 @@
    273                          
    274                          };end of else if
    275                          
-   276  0cfc 00                 COMMANDBYTE !by 0
-   277  0cfd 00                 BITPOS !by 0
+   276  0cd1 00                 COMMANDBYTE !by 0
+   277  0cd2 00                 BITPOS !by 0
    278                          
    279                          };end of zone
    280                          
@@ -968,155 +1010,155 @@
    286                          ; It will measure time between falling edges of IRQ
    287                          
    288                          IRQHANDLER1
-   289  0cfe 78                 	SEI	
-   290  0cff 0e19d0             	ASL $D019	;Acknowledge interrupt
-   291  0d02 adfc0c             	LDA COMMANDBYTE
-   292  0d05 acfd0c             	LDY BITPOS					
-   293  0d08 c008               	CPY #$08
-   294  0d0a f03c               	BEQ FINISHSENDING1
-   295  0d0c eefd0c             	INC BITPOS
-   296  0d0f c8                 	INY 
+   289  0cd3 78                 	SEI	
+   290  0cd4 0e19d0             	ASL $D019	;Acknowledge interrupt
+   291  0cd7 add10c             	LDA COMMANDBYTE
+   292  0cda acd20c             	LDY BITPOS					
+   293  0cdd c008               	CPY #$08
+   294  0cdf f03c               	BEQ FINISHSENDING1
+   295  0ce1 eed20c             	INC BITPOS
+   296  0ce4 c8                 	INY 
    297                          
    298                          SHIFTBYTE1	
-   299  0d10 4a                 	LSR			;Move rightmost bit right moving it to carry
-   300  0d11 88                 	DEY
-   301  0d12 d0fc               	BNE SHIFTBYTE1
-   302  0d14 901e               	BCC IRQHANDLE1CONT
+   299  0ce5 4a                 	LSR			;Move rightmost bit right moving it to carry
+   300  0ce6 88                 	DEY
+   301  0ce7 d0fc               	BNE SHIFTBYTE1
+   302  0ce9 901e               	BCC IRQHANDLE1CONT
    303                          	
-   304  0d16 a97f               	LDA #$7F
-   305  0d18 2d11d0             	AND $D011
-   306  0d1b 8d11d0             	STA $D011 
+   304  0ceb a97f               	LDA #$7F
+   305  0ced 2d11d0             	AND $D011
+   306  0cf0 8d11d0             	STA $D011 
    307                          			
-   308  0d1e a9a0               	LDA #$A0
-   309  0d20 8d12d0             	STA $D012			
-   310  0d23 a953               	LDA #<IRQHANDLER2
-   311  0d25 8d1403             	STA IRQVECTOR
-   312  0d28 a90d               	LDA #>IRQHANDLER2
-   313  0d2a 8d1503             	STA IRQVECTOR+1
+   308  0cf3 a9a0               	LDA #$A0
+   309  0cf5 8d12d0             	STA $D012			
+   310  0cf8 a928               	LDA #<IRQHANDLER2
+   311  0cfa 8d1403             	STA IRQVECTOR
+   312  0cfd a90d               	LDA #>IRQHANDLER2
+   313  0cff 8d1503             	STA IRQVECTOR+1
    314                          
-   315  0d2d 58                 	CLI
+   315  0d02 58                 	CLI
    316                          	;JMP $EA31 
-   317  0d2e 68                 	PLA
-   318  0d2f a8                 	TAY
-   319  0d30 68                 	PLA
-   320  0d31 aa                 	TAX
-   321  0d32 68                 	PLA 
-   322  0d33 40                 	RTI
+   317  0d03 68                 	PLA
+   318  0d04 a8                 	TAY
+   319  0d05 68                 	PLA
+   320  0d06 aa                 	TAX
+   321  0d07 68                 	PLA 
+   322  0d08 40                 	RTI
    323                          
    324                          ;-------------------------------------------------------
    325                          
    326                          IRQHANDLE1CONT	
    327                          
-   328  0d34 a97f               	LDA #$7F
-   329  0d36 2d11d0             	AND $D011
-   330  0d39 8d11d0             	STA $D011 
-   331  0d3c a900               	LDA #$00
-   332  0d3e 8d12d0             	STA $D012		
+   328  0d09 a97f               	LDA #$7F
+   329  0d0b 2d11d0             	AND $D011
+   330  0d0e 8d11d0             	STA $D011 
+   331  0d11 a900               	LDA #$00
+   332  0d13 8d12d0             	STA $D012		
    333                          
-   334  0d41 58                 	CLI	
+   334  0d16 58                 	CLI	
    335                          	;JMP $EA31 
-   336  0d42 68                 	PLA
-   337  0d43 a8                 	TAY
-   338  0d44 68                 	PLA
-   339  0d45 aa                 	TAX
-   340  0d46 68                 	PLA 
-   341  0d47 40                 	RTI	
+   336  0d17 68                 	PLA
+   337  0d18 a8                 	TAY
+   338  0d19 68                 	PLA
+   339  0d1a aa                 	TAX
+   340  0d1b 68                 	PLA 
+   341  0d1c 40                 	RTI	
    342                          ;-------------------------------------------------------
    343                          
    344                          FINISHSENDING1
    345                          
-   346  0d48 a964               	LDA #$64
-   347  0d4a 8564               	STA BITTARGET		; Break foreground wait
+   346  0d1d a964               	LDA #$64
+   347  0d1f 8564               	STA BITTARGET		; Break foreground wait
    348                          	
    349                          	;LDA #$00
    350                          	;STA $D01A
    351                          		
-   352  0d4c 58                 	CLI
+   352  0d21 58                 	CLI
    353                          	;JMP $EA31 
-   354  0d4d 68                 	PLA
-   355  0d4e a8                 	TAY
-   356  0d4f 68                 	PLA
-   357  0d50 aa                 	TAX
-   358  0d51 68                 	PLA 
-   359  0d52 40                 	RTI
+   354  0d22 68                 	PLA
+   355  0d23 a8                 	TAY
+   356  0d24 68                 	PLA
+   357  0d25 aa                 	TAX
+   358  0d26 68                 	PLA 
+   359  0d27 40                 	RTI
    360                          
    361                          ;-------------------------------------------------------
    362                          
    363                          IRQHANDLER2
    364                          
-   365  0d53 78                 	SEI
-   366  0d54 0e19d0             	ASL $D019	;Acknowledge interrupt
-   367  0d57 adfc0c             	LDA COMMANDBYTE
-   368  0d5a acfd0c             	LDY BITPOS					
-   369  0d5d c008               	CPY #$08
-   370  0d5f f028               	BEQ FINISHSENDING2
-   371  0d61 eefd0c             	INC BITPOS
-   372  0d64 c8                 	INY 
+   365  0d28 78                 	SEI
+   366  0d29 0e19d0             	ASL $D019	;Acknowledge interrupt
+   367  0d2c add10c             	LDA COMMANDBYTE
+   368  0d2f acd20c             	LDY BITPOS					
+   369  0d32 c008               	CPY #$08
+   370  0d34 f028               	BEQ FINISHSENDING2
+   371  0d36 eed20c             	INC BITPOS
+   372  0d39 c8                 	INY 
    373                          
    374                          SHIFTBYTE2	
    375                          
-   376  0d65 4a                 	LSR			;Move rightmost bit right moving it to carry
-   377  0d66 88                 	DEY
-   378  0d67 d0fc               	BNE SHIFTBYTE2
-   379  0d69 9028               	BCC IRQHANDLE2CONT
+   376  0d3a 4a                 	LSR			;Move rightmost bit right moving it to carry
+   377  0d3b 88                 	DEY
+   378  0d3c d0fc               	BNE SHIFTBYTE2
+   379  0d3e 9028               	BCC IRQHANDLE2CONT
    380                          	
-   381  0d6b a97f               	LDA #$7F
-   382  0d6d 2d11d0             	AND $D011
-   383  0d70 8d11d0             	STA $D011 		
-   384  0d73 a900               	LDA #$00
-   385  0d75 8d12d0             	STA $D012			
-   386  0d78 a9fe               	LDA #<IRQHANDLER1
-   387  0d7a 8d1403             	STA IRQVECTOR
-   388  0d7d a90c               	LDA #>IRQHANDLER1
-   389  0d7f 8d1503             	STA IRQVECTOR+1
+   381  0d40 a97f               	LDA #$7F
+   382  0d42 2d11d0             	AND $D011
+   383  0d45 8d11d0             	STA $D011 		
+   384  0d48 a900               	LDA #$00
+   385  0d4a 8d12d0             	STA $D012			
+   386  0d4d a9d3               	LDA #<IRQHANDLER1
+   387  0d4f 8d1403             	STA IRQVECTOR
+   388  0d52 a90c               	LDA #>IRQHANDLER1
+   389  0d54 8d1503             	STA IRQVECTOR+1
    390                          	
    391                          	
-   392  0d82 58                 	CLI
+   392  0d57 58                 	CLI
    393                          	;JMP $EA31 
-   394  0d83 68                 	PLA
-   395  0d84 a8                 	TAY
-   396  0d85 68                 	PLA
-   397  0d86 aa                 	TAX
-   398  0d87 68                 	PLA 
-   399  0d88 40                 	RTI	
+   394  0d58 68                 	PLA
+   395  0d59 a8                 	TAY
+   396  0d5a 68                 	PLA
+   397  0d5b aa                 	TAX
+   398  0d5c 68                 	PLA 
+   399  0d5d 40                 	RTI	
    400                          
    401                          ;-------------------------------------------------------
    402                          
    403                          FINISHSENDING2
    404                          	
-   405  0d89 a964               	LDA #$64
-   406  0d8b 8564               	STA BITTARGET		; Break foreground wait
+   405  0d5e a964               	LDA #$64
+   406  0d60 8564               	STA BITTARGET		; Break foreground wait
    407                          	
    408                          	;LDA #$00
    409                          	;STA $D01A
    410                          	
    411                          	;JMP $EA31
-   412  0d8d 68                 	PLA
-   413  0d8e a8                 	TAY
-   414  0d8f 68                 	PLA
-   415  0d90 aa                 	TAX
-   416  0d91 68                 	PLA 
-   417  0d92 40                 	RTI		
+   412  0d62 68                 	PLA
+   413  0d63 a8                 	TAY
+   414  0d64 68                 	PLA
+   415  0d65 aa                 	TAX
+   416  0d66 68                 	PLA 
+   417  0d67 40                 	RTI		
    418                          
    419                          ;-------------------------------------------------------
    420                          
    421                          IRQHANDLE2CONT	
    422                          
-   423  0d93 a97f               	LDA #$7F
-   424  0d95 2d11d0             	AND $D011
-   425  0d98 8d11d0             	STA $D011 
-   426  0d9b a9a0               	LDA #$A0
-   427  0d9d 8d12d0             	STA $D012		
+   423  0d68 a97f               	LDA #$7F
+   424  0d6a 2d11d0             	AND $D011
+   425  0d6d 8d11d0             	STA $D011 
+   426  0d70 a9a0               	LDA #$A0
+   427  0d72 8d12d0             	STA $D012		
    428                          
    429                          		
-   430  0da0 58                 	CLI	
+   430  0d75 58                 	CLI	
    431                          	;JMP $EA31 
-   432  0da1 68                 	PLA
-   433  0da2 a8                 	TAY
-   434  0da3 68                 	PLA
-   435  0da4 aa                 	TAX
-   436  0da5 68                 	PLA 
-   437  0da6 40                 	RTI		
+   432  0d76 68                 	PLA
+   433  0d77 a8                 	TAY
+   434  0d78 68                 	PLA
+   435  0d79 aa                 	TAX
+   436  0d7a 68                 	PLA 
+   437  0d7b 40                 	RTI		
    438                          
    439                          ;-------------------------------------------------------
    440                          ;Other Subs
@@ -1124,125 +1166,125 @@
    442                          
    443                          killCIA
    444                          
-   445  0da7 a07f               	LDY #$7f    ; $7f = %01111111 
-   446  0da9 8c0ddc             	STY $dc0d   ; Turn off CIAs Timer interrupts 
-   447  0dac 8c0ddd             	STY $dd0d   ; Turn off CIAs Timer interrupts 
-   448  0daf ad0ddc             	LDA $dc0d   ; cancel all CIA-IRQs in queue/unprocessed 
-   449  0db2 ad0ddd             	LDA $dd0d   ; cancel all CIA-IRQs in queue/unprocessed 
-   450  0db5 60                 	RTS	
+   445  0d7c a07f               	LDY #$7f    ; $7f = %01111111 
+   446  0d7e 8c0ddc             	STY $dc0d   ; Turn off CIAs Timer interrupts 
+   447  0d81 8c0ddd             	STY $dd0d   ; Turn off CIAs Timer interrupts 
+   448  0d84 ad0ddc             	LDA $dc0d   ; cancel all CIA-IRQs in queue/unprocessed 
+   449  0d87 ad0ddd             	LDA $dd0d   ; cancel all CIA-IRQs in queue/unprocessed 
+   450  0d8a 60                 	RTS	
    451                          
    452                          ;-------------------------------------------------------	
    453                          
    454                          DISABLEINTERRUPTS
    455                          
-   456  0db6 a07f               	LDY #$7f    			; $7f = %01111111 
-   457  0db8 8c0ddc             	STY $dc0d   			; Turn off CIAs Timer interrupts 
-   458  0dbb 8c0ddd             	STY $dd0d  				; Turn off CIAs Timer interrupts 
-   459  0dbe ad0ddc             	LDA $dc0d  				; cancel all CIA-IRQs in queue/unprocessed 
-   460  0dc1 ad0ddd             	LDA $dd0d   			; cancel all CIA-IRQs in queue/unprocessed 
+   456  0d8b a07f               	LDY #$7f    			; $7f = %01111111 
+   457  0d8d 8c0ddc             	STY $dc0d   			; Turn off CIAs Timer interrupts 
+   458  0d90 8c0ddd             	STY $dd0d  				; Turn off CIAs Timer interrupts 
+   459  0d93 ad0ddc             	LDA $dc0d  				; cancel all CIA-IRQs in queue/unprocessed 
+   460  0d96 ad0ddd             	LDA $dd0d   			; cancel all CIA-IRQs in queue/unprocessed 
    461                          	;Change interrupt routines
-   462  0dc4 0e19d0             	ASL $D019
-   463  0dc7 a900               	LDA #$00
-   464  0dc9 8d1ad0             	STA $D01A
-   465  0dcc 60                 	RTS
+   462  0d99 0e19d0             	ASL $D019
+   463  0d9c a900               	LDA #$00
+   464  0d9e 8d1ad0             	STA $D01A
+   465  0da1 60                 	RTS
    466                          
    467                          ;-------------------------------------------------------	
    468                          
    469                          GETCURRENTROW				; Input : None, Output : X (current row)
-   470  0dcd a612               	LDX activeMenuItem
-   471  0dcf 60                 	RTS	
+   470  0da2 a612               	LDX activeMenuItem
+   471  0da4 60                 	RTS	
    472                          
    473                          ;-------------------------------------------------------
    474                          
    475                          SETUPTRANSFER	
    476                          
-   477  0dd0 20b60d             	JSR DISABLEINTERRUPTS
-   478  0dd3 201f0e             	JSR DISABLEDISPLAY
-   479  0dd6 a937               	LDA #$37
-   480  0dd8 8501               	STA $01	
+   477  0da5 208b0d             	JSR DISABLEINTERRUPTS
+   478  0da8 20f40d             	JSR DISABLEDISPLAY
+   479  0dab a937               	LDA #$37
+   480  0dad 8501               	STA $01	
    481                          	; Do not Disable kernal & basic rom	
    482                          	
    483                          	; Switch between 8byte & 4byte & 1byte transfer routine using micro supplied TRANSFERMODE value.
-   484  0dda ac03c0             	LDY TRANSFERMODE
-   485  0ddd b9ed10             	LDA NMITAB, Y
+   484  0daf ac03c0             	LDY TRANSFERMODE
+   485  0db2 b9c210             	LDA NMITAB, Y ; CARTRIDGENMIHANDLER1, CARTRIDGENMIHANDLER4, CARTRIDGENMIHANDLER8
    486                          
-   487  0de0 8d1803             	STA SOFTNMIVECTOR
+   487  0db5 8d1803             	STA SOFTNMIVECTOR
    488                          	
-   489  0de3 a980               	LDA #$80
-   490  0de5 8d1903             	STA SOFTNMIVECTOR+1	
+   489  0db8 a980               	LDA #$80
+   490  0dba 8d1903             	STA SOFTNMIVECTOR+1	
    491                          		
-   492  0de8 a000                  	LDY #$00	;Setup for transfer routine   	   	
+   492  0dbd a000                  	LDY #$00	;Setup for transfer routine   	   	
    493                             	;JSR WAITLINE   	
-   494  0dea 60                 	RTS
+   494  0dbf 60                 	RTS
    495                          
    496                          ;-------------------------------------------------------
    497                          
    498                          WAITLINE   	
    499                          
-   500  0deb a980                  	LDA #$80
-   501  0ded cd12d0                	CMP $D012
-   502  0df0 d0f9                  	BNE WAITLINE
-   503  0df2 20f90d                	JSR WASTELINES 
-   504  0df5 c8                    	INY
-   505  0df6 d0f3                  	BNE WAITLINE
-   506  0df8 60                    	RTS	
+   500  0dc0 a980                  	LDA #$80
+   501  0dc2 cd12d0                	CMP $D012
+   502  0dc5 d0f9                  	BNE WAITLINE
+   503  0dc7 20ce0d                	JSR WASTELINES 
+   504  0dca c8                    	INY
+   505  0dcb d0f3                  	BNE WAITLINE
+   506  0dcd 60                    	RTS	
    507                          WASTELINES
-   508  0df9 a200               	LDX #$00
+   508  0dce a200               	LDX #$00
    509                          CONSUME	
-   510  0dfb ea                 	NOP
-   511  0dfc e8                 	INX
-   512  0dfd d0fc               	BNE CONSUME		
-   513  0dff 60                 	RTS
+   510  0dd0 ea                 	NOP
+   511  0dd1 e8                 	INX
+   512  0dd2 d0fc               	BNE CONSUME		
+   513  0dd4 60                 	RTS
    514                          
    515                          ;-------------------------------------------------------
    516                          
    517                          INITTRANSVAR
    518                          
-   519  0e00 a900               	LDA #<MICROLOADSTART
-   520  0e02 8569               	STA DATA_LOW
-   521  0e04 856c               	STA ACTUAL_LOW
-   522  0e06 a9c0               	LDA #>MICROLOADSTART
-   523  0e08 856a               	STA DATA_HIGH
-   524  0e0a 856d               	STA ACTUAL_HIGH	
-   525  0e0c a903               	LDA #$03
-   526  0e0e 856b               	STA DATA_LENGTH
-   527  0e10 aa                 	TAX		
-   528  0e11 a000               	LDY #$00
-   529  0e13 60                 	RTS
+   519  0dd5 a900               	LDA #<MICROLOADSTART
+   520  0dd7 8569               	STA DATA_LOW
+   521  0dd9 856c               	STA ACTUAL_LOW
+   522  0ddb a9c0               	LDA #>MICROLOADSTART
+   523  0ddd 856a               	STA DATA_HIGH
+   524  0ddf 856d               	STA ACTUAL_HIGH	
+   525  0de1 a903               	LDA #$03
+   526  0de3 856b               	STA DATA_LENGTH
+   527  0de5 aa                 	TAX		
+   528  0de6 a000               	LDY #$00
+   529  0de8 60                 	RTS
    530                          
    531                          ;-------------------------------------------------------
    532                          
    533                          ENDTRANSFER
    534                          
-   535  0e14 a947               	LDA #<ROMNMIHANDLER
-   536  0e16 8d1803             	STA SOFTNMIVECTOR
-   537  0e19 a9fe               	LDA #>ROMNMIHANDLER
-   538  0e1b 8d1903             	STA SOFTNMIVECTOR+1
-   539  0e1e 60                 	RTS
+   535  0de9 a947               	LDA #<ROMNMIHANDLER
+   536  0deb 8d1803             	STA SOFTNMIVECTOR
+   537  0dee a9fe               	LDA #>ROMNMIHANDLER
+   538  0df0 8d1903             	STA SOFTNMIVECTOR+1
+   539  0df3 60                 	RTS
    540                          
    541                          ;-------------------------------------------------------		
    542                          
    543                          DISABLEDISPLAY
    544                          
-   545  0e1f a900               	LDA #$00
-   546  0e21 8d15d0             	STA $D015				;Disable sprites
-   547  0e24 a90b               	LDA #$0B				;%00001011 ; Disable VIC display until the end of transfer
-   548  0e26 8d11d0             	STA $D011	
-   549  0e29 60                 	RTS
+   545  0df4 a900               	LDA #$00
+   546  0df6 8d15d0             	STA $D015				;Disable sprites
+   547  0df9 a90b               	LDA #$0B				;%00001011 ; Disable VIC display until the end of transfer
+   548  0dfb 8d11d0             	STA $D011	
+   549  0dfe 60                 	RTS
    550                          
    551                          ;-------------------------------------------------------
    552                          
    553                          ENABLEDISPLAY
-   554  0e2a a900               	LDA #$00
-   555  0e2c 8d20d0             	STA $D020
-   556  0e2f a9ff               	LDA #$FF
-   557  0e31 8d15d0             	STA $D015				;Enable sprites
-   558  0e34 a91b               	LDA #$1B				;%00001011 ; Disable VIC display until the end of transfer
-   559  0e36 8d11d0             	STA $D011	
-   560  0e39 60                 	RTS				
+   554  0dff a900               	LDA #$00
+   555  0e01 8d20d0             	STA $D020
+   556  0e04 a9ff               	LDA #$FF
+   557  0e06 8d15d0             	STA $D015				;Enable sprites
+   558  0e09 a91b               	LDA #$1B				;%00001011 ; Disable VIC display until the end of transfer
+   559  0e0b 8d11d0             	STA $D011	
+   560  0e0e 60                 	RTS				
 
 ; ******** Source: main.asm
-    30                          
+    32                          
 
 ; ******** Source: data.asm
      1                          ;-------------------------------------------------------
@@ -1250,34 +1292,34 @@
      3                          ;-------------------------------------------------------
      4                          
      5                          repeat_bytes:
-     6  0e3a 0117010f           !by $01,$17,$01,$0f
-     7  0e3e 0117010f           !by $01,$17,$01,$0f
-     8  0e42 011601010f         !by $01,$16,$01,$01,$0f
-     9  0e47 011601010f011601...!for n,1,21 {!by $01,$16,$01,$01,$0f}
-    10  0eb0 0117010f           !by $01,$17,$01,$0F
-    11  0eb4 00                 !by $00
+     6  0e0f 0117010f           !by $01,$17,$01,$0f
+     7  0e13 0117010f           !by $01,$17,$01,$0f
+     8  0e17 011601010f         !by $01,$16,$01,$01,$0f
+     9  0e1c 011601010f011601...!for n,1,21 {!by $01,$16,$01,$01,$0f}
+    10  0e85 0117010f           !by $01,$17,$01,$0F
+    11  0e89 00                 !by $00
     12                          
     13                          char_bytes:
-    14  0eb5 40414200           !by $40,$41,$42,$00
-    15  0eb9 43534400           !by $43,$53,$44,$00
-    16  0ebd 45494a4600         !by $45,$49,$4a,$46,$00
-    17  0ec2 47204b480047204b...!for n,1,21 {!by $47,$20,$4b,$48,$00}
-    18  0f2b 50515200           !by $50,$51,$52,$00
+    14  0e8a 40414200           !by $40,$41,$42,$00
+    15  0e8e 43534400           !by $43,$53,$44,$00
+    16  0e92 45494a4600         !by $45,$49,$4a,$46,$00
+    17  0e97 47204b480047204b...!for n,1,21 {!by $47,$20,$4b,$48,$00}
+    18  0f00 50515200           !by $50,$51,$52,$00
     19                          
     20                          color_bytes:
-    21  0f2f 010d0100           !by $01,$0d,$01,$00
-    22  0f33 0d050d00           !by $0d,$05,$0d,$00
-    23  0f37 0d0f0b0d00         !by $0d,$0f,$0b,$0d,$00
-    24  0f3c 0d0f0b0d000d0f0b...!for n,1,21 {!by $0d,$0f,$0b,$0d,$00}
-    25  0fa5 050d0d0000         !by $05,$0d,$0d,$00,$00
+    21  0f04 010d0100           !by $01,$0d,$01,$00
+    22  0f08 0d050d00           !by $0d,$05,$0d,$00
+    23  0f0c 0d0f0b0d00         !by $0d,$0f,$0b,$0d,$00
+    24  0f11 0d0f0b0d000d0f0b...!for n,1,21 {!by $0d,$0f,$0b,$0d,$00}
+    25  0f7a 050d0d0000         !by $05,$0d,$0d,$00,$00
     26                          
     27                          ;* = $3000 ;walkaround for is segment override problem 
     28                          
     29                          spriteX:
-    30  0faa e8001830           !by 232,0,24,48
+    30  0f7f e8001830           !by 232,0,24,48
     31                          
     32                          spriteY:
-    33  0fae 41567084a0b5       !by 65,86,112,132,160,181
+    33  0f83 41567084a0b5       !by 65,86,112,132,160,181
     34                          
     35                          spriteSinus:
     36                          !for n,1,2 {
@@ -1285,28 +1327,28 @@
     38                          !by 0,0,0,0,0,1,1,2,2,3,3,4,5,6,6,7
     39                          !by 8,9,9,10,11,12,12,13,13,14,14,15,15,15,15,15
     40                          !by 15,15,15,15,15,14,14,13,13,12,11,11,10,9,8,8
-    41  0fb4 0807060504040302...}
+    41  0f89 0807060504040302...}
     42                          
     43                          spColorOffset:
-    44  1034 0302020201010101...!by 3,2,2,2,1,1,1,1,0,0,0,0,0,0,0,0
-    45  1044 0000000000000000...!by 0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2
-    46  1054 0303030404040405...!by 3,3,3,4,4,4,4,5,5,5,5,5,5,5,5,5
-    47  1064 0505050505050505...!by 5,5,5,5,5,5,5,5,4,4,4,4,3,3,3,3
-    48  1074 0000000000000000...!fill 65,0
+    44  1009 0302020201010101...!by 3,2,2,2,1,1,1,1,0,0,0,0,0,0,0,0
+    45  1019 0000000000000000...!by 0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2
+    46  1029 0303030404040405...!by 3,3,3,4,4,4,4,5,5,5,5,5,5,5,5,5
+    47  1039 0505050505050505...!by 5,5,5,5,5,5,5,5,4,4,4,4,3,3,3,3
+    48  1049 0000000000000000...!fill 65,0
     49                          
-    50  10b5 01010f0c0b00       spColor1: !by 1,1,15,12,11,0
-    51  10bb 0606060b0b00       spColor2: !by 6,6,6,11,11,0
-    52  10c1 0e0e040c0b00       spColor3: !by 14,14,4,12,11,0
+    50  108a 01010f0c0b00       spColor1: !by 1,1,15,12,11,0
+    51  1090 0606060b0b00       spColor2: !by 6,6,6,11,11,0
+    52  1096 0e0e040c0b00       spColor3: !by 14,14,4,12,11,0
     53                          
     54                          ;-------------------------------------------------------
     55                          ; Test Data
     56                          ;-------------------------------------------------------
     57                          
     58                          title:
-    59  10c7 2f0d0903120f2013...!scr "/micro sd         "
+    59  109c 2f0d0903120f2013...!scr "/micro sd         "
     60                          
     61                          titleTurbo:
-    62  10d9 2f0d0903120f2013...!scr "/micro sd  (turbo)"
+    62  10ae 2f0d0903120f2013...!scr "/micro sd  (turbo)"
     63                          
     64                          
     65                          ;text:
@@ -1316,30 +1358,30 @@
     69                          ;!by 4,44,84,214
     70                          
     71                          menuState:
-    72  10eb 00                 !by 0			; Menu state (0 = Launched, 1 = Got list from micro)
+    72  10c0 00                 !by 0			; Menu state (0 = Launched, 1 = Got list from micro)
     73                          
     74                          waitCounter:
-    75  10ec 3c                 !by WAITCOUNT
+    75  10c1 3c                 !by WAITCOUNT
     76                          
     77                          
     78                          
     79                          NMITAB:
-    80  10ed afa08c             !by <CARTRIDGENMIHANDLERX1, <CARTRIDGENMIHANDLERX4, <CARTRIDGENMIHANDLERX8
+    80  10c2 afa08c             !by <CARTRIDGENMIHANDLERX1, <CARTRIDGENMIHANDLERX4, <CARTRIDGENMIHANDLERX8
     81                          
     82                          ;-------------------------------------------------------
     83                          ; Fixed Adress Data
     84                          ;-------------------------------------------------------
-    85                          
+    85                          !if SILENT <> 1 {
     86                          musicActual:
-    87  10f0 4c1d144c85144c2f...!bin "resources/Jamaica_10_intro_reloc.sid",3167,$7c+2
+    87                          !bin "resources/Jamaica_10_intro_reloc.sid",3167,$7c+2
     88                          musicActualEnd = *-1
-    89                          
+    89                          }
     90                          spriteBaseActual:
-    91  1d4f 0400051500151500...!bin "resources/sprites.bin",1536
+    91  10c5 0400051500151500...!bin "resources/sprites.bin",1536
     92                          spriteBaseActualEnd = *-1
     93                          
     94                          charsetBaseActual:
-    95  234f ffffffffffffffff...!bin "resources/charset.bin",1000
+    95  16c5 ffffffffffffffff...!bin "resources/charset.bin",1000
     96                          charsetBaseActualEnd = *-1
     97                          
     98                          fileNameDataActual:
@@ -1354,4 +1396,4 @@
    107                          }
 
 ; ******** Source: main.asm
-    31                          
+    33                          
