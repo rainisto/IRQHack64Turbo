@@ -7,9 +7,10 @@ RUN curl -L https://sourceforge.net/projects/tass64/files/source/64tass-1.53.151
     unzip 64tass-1.53.1515-src.zip && cd 64tass-1.53.1515-src && make && make install && cd - && \
     curl -L ftp://ftp.zimmers.net/pub/cbm/programming/unix/petcat-1.9.tar.gz -o petcat-1.9.tar.gz && tar -zxvf petcat-1.9.tar.gz && \
     cd petcat-1.9 && make -f Makefile.petcat && cp petcat /bin && cd - && \
-    git clone https://github.com/rainisto/IRQHack64Turbo.git && git clone https://github.com/meonwax/acme.git && \
+    git clone https://github.com/meonwax/acme.git && \
     cd acme/src && make && make install
-RUN cd /IRQHack64Turbo/IRQHackC64 && 64tass -c -b Loader/LoaderStub.65s -o build/LoaderStub.65s.bin --labels build/LoaderStub.65s.txt && \
+RUN git clone -b paskasoft https://github.com/rainisto/IRQHack64Turbo.git && \
+    cd /IRQHack64Turbo/IRQHackC64 && 64tass -c -b Loader/LoaderStub.65s -o build/LoaderStub.65s.bin --labels build/LoaderStub.65s.txt && \
     64tass -c -b Loader/IRQLoader.65s -o build/IRQLoader.65s.bin --labels build/IRQLoader.txt && \
     petcat -w2 < Menus/I_R_on/IrqLoaderMenu.bas > build/IrqLoaderMenu.obj && \
     64tass -c -b Menus/WarningMenu/Warning.65s -o build/Warning.65s.bin  --labels build/Warning.65s.txt && \
