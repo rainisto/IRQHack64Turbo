@@ -374,7 +374,7 @@ TITLE
         .TEXT "1. JIFFYDOS       2. GIANA SISTERS      "
         .TEXT "3. INT.KARATE+    4. M.U.L.E.           "
         .TEXT "5. FB             6. JOYSTICK TESTER    "
-        .TEXT "7. BOMB MANIA     8. INT. SOCCER        "
+        .TEXT "7. BOMB MANIA     8. MICROPROSE SOCCER  "
         .TEXT "9. HOCKEY MANIA  10. COMMANDO           "
         .BYTE 0
 	
