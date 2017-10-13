@@ -375,7 +375,7 @@ TITLE
         .TEXT "3. INT.KARATE+    4. M.U.L.E.           "
         .TEXT "5. FB             6. JOYSTICK TESTER    "
         .TEXT "7. BOMB MANIA     8. MICROPROSE SOCCER  "
-        .TEXT "9. HOCKEY MANIA  10. COMMANDO           "
+        .TEXT "9. HOCKEY MANIA   0. COMMANDO           "
         .BYTE 0
 	
 
