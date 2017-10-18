@@ -20,6 +20,27 @@ counter = $fa ; a zeropage address to be used as a counter
 
 	lda #$00    ; reset
 	sta counter ; counter
+        jmp .keyboardScan
+
+downloop1:  lda #$fb  ; wait for vertical retrace
+downloop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
+        bne downloop2 ; which is out of the inner screen area
+
+        inc counter ; increase frame counter
+        lda counter ; check if counter
+        cmp #$19    ; reached 25
+        bne downout ; if not, pass the jumping
+
+        lda #$00    ; reset
+        sta counter ; counter
+
+        jmp .down
+downout:
+        lda $d012 ; make sure we reached
+downloop3:  cmp $d012 ; the next raster line so next time we
+        beq downloop3 ; should catch the same line next frame
+
+        jmp downloop1 ; jump to main loop
 
 .keyboardScan:
 
@@ -81,26 +102,6 @@ counter = $fa ; a zeropage address to be used as a counter
 	jmp .end
 
 j1: jmp enter
-
-downloop1:  lda #$fb  ; wait for vertical retrace
-downloop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
-        bne downloop2 ; which is out of the inner screen area
-
-        inc counter ; increase frame counter
-        lda counter ; check if counter
-        cmp #$19    ; reached 25
-        bne downout ; if not, pass the jumping
-
-        lda #$00    ; reset
-        sta counter ; counter
-
-        jmp .down
-downout:
-        lda $d012 ; make sure we reached
-downloop3:  cmp $d012 ; the next raster line so next time we
-        beq downloop3 ; should catch the same line next frame
-
-        jmp downloop1 ; jump to main loop
 
 .down
 	;clear old coloring
