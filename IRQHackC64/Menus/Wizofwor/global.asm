@@ -85,3 +85,8 @@ COMMANDENTERMASK= $01 ;Part of the command byte that flags controlling micro tha
 WAITCOUNT		= 60 ; Frame count to wait between Launching & requesting file list from micro
 GOTLISTFROMMICRO = $01 ; Menu state - Got list from micro
 
+
+
+counter = $fa ; a zeropage address to be used as a counter
+        lda #$00    ; reset
+        sta counter ; counter

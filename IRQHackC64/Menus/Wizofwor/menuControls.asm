@@ -16,10 +16,6 @@
 .KEY_F1	   = 133
 .KEY_F7	   = 136
 
-counter = $fa ; a zeropage address to be used as a counter
-
-	lda #$00    ; reset
-	sta counter ; counter
         jmp .keyboardScan
 
 downloop1:  lda #$fb  ; wait for vertical retrace
@@ -40,7 +36,7 @@ downout:
 downloop3:  cmp $d012 ; the next raster line so next time we
         beq downloop3 ; should catch the same line next frame
 
-        jmp downloop1 ; jump to main loop
+        jmp .end ; jump to main loop
 
 .keyboardScan:
 
@@ -146,7 +142,7 @@ upout:
 uploop3:  cmp $d012 ; the next raster line so next time we
         beq uploop3 ; should catch the same line next frame
 
-        jmp uploop1 ; jump to main loop
+        jmp .end ; jump to main loop
 
 .up
 
