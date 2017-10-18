@@ -28,7 +28,7 @@ downloop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
 
         inc counter ; increase frame counter
         lda counter ; check if counter
-        cmp #$19    ; reached 25
+        cmp #$5     ; reached 5
         bne downout ; if not, pass the jumping
 
         lda #$00    ; reset
@@ -134,7 +134,7 @@ uploop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
 
         inc counter ; increase frame counter
         lda counter ; check if counter
-        cmp #$19    ; reached 25
+        cmp #$5     ; reached 5
         bne upout     ; if not, pass the color changing routine
 
         lda #$00    ; reset
