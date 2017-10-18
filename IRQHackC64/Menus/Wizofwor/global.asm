@@ -51,6 +51,7 @@ activeMenuItem  = $12 	;Selected row's number
 activeMenuItemAddr = $14 	;Selected row's first color ram address
 ;           	= $15   ;hi byte for active row's color ram addres
 RESERVED 	  	= $05 	;Not used
+counter = $fa ; a zeropage address to be used as a counter
 
 ;temprary variables
 var1 			= $18 
@@ -87,6 +88,3 @@ GOTLISTFROMMICRO = $01 ; Menu state - Got list from micro
 
 
 
-counter = $fa ; a zeropage address to be used as a counter
-        lda #$00    ; reset
-        sta counter ; counter
