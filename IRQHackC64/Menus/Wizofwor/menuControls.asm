@@ -8,13 +8,35 @@
 .KEY_PLUS  = $2b ; +
 .KEY_GT = $2e ; >
 .KEY_LT = $2c ; <
-.KEY_ENTER = $0d 
+.KEY_ENTER = $0d
 .KEY_LEFT  = $9d
 .KEY_RIGHT = $1d
 .KEY_UP    = $91
 .KEY_DOWN  = $11
 .KEY_F1	   = 133
 .KEY_F7	   = 136
+
+        jmp .keyboardScan
+
+downloop1:  lda #$fb  ; wait for vertical retrace
+downloop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
+        bne downloop2 ; which is out of the inner screen area
+
+        inc counter ; increase frame counter
+        lda counter ; check if counter
+        cmp #$5     ; reached 5
+        bne downout ; if not, pass the jumping
+
+        lda #$00    ; reset
+        sta counter ; counter
+
+        jmp .down
+downout:
+        lda $d012 ; make sure we reached
+downloop3:  cmp $d012 ; the next raster line so next time we
+        beq downloop3 ; should catch the same line next frame
+
+        jmp .end ; jump to main loop
 
 .keyboardScan:
 
@@ -30,10 +52,10 @@
 	beq j1
 	lda $DC00 ;joyport 2
 	and #2
-	beq .down
+	beq downloop1
 	lda $DC00 ;joyport 2
 	and #1
-	beq .up
+	beq uploop1
 
 	jsr SCNKEY		; Call kernal's key scan routine
  	jsr GETIN		; Get the pressed key by the kernal routine
@@ -65,10 +87,10 @@
 
 	ldx PAGEINDEX
 	inx
-	cpx numberOfPages	  	
+	cpx numberOfPages
 	bcc .execNext	;BLT
 	jmp .end
-	
+
 .prevPage
 
 	ldx PAGEINDEX
@@ -88,7 +110,7 @@ j1: jmp enter
 	;increment ACTIVE_ITEM
 	ldx numberOfItems 	;check if the cursor is
 	dex 				;already at end of page
-	cpx activeMenuItem 	
+	cpx activeMenuItem
 	beq .end
 	inc activeMenuItem
 
@@ -101,6 +123,26 @@ j1: jmp enter
 	sta activeMenuItemAddr+1
 
 	jmp .end
+
+uploop1:  lda #$fb  ; wait for vertical retrace
+uploop2:  cmp $d012 ; until it reaches 251th raster line ($fb)
+        bne uploop2 ; which is out of the inner screen area
+
+        inc counter ; increase frame counter
+        lda counter ; check if counter
+        cmp #$5     ; reached 5
+        bne upout     ; if not, pass the color changing routine
+
+        lda #$00    ; reset
+        sta counter ; counter
+
+	jmp .up
+upout:
+        lda $d012 ; make sure we reached
+uploop3:  cmp $d012 ; the next raster line so next time we
+        beq uploop3 ; should catch the same line next frame
+
+        jmp .end ; jump to main loop
 
 .up
 
@@ -125,7 +167,7 @@ j1: jmp enter
 	sbc #00
 	sta activeMenuItemAddr+1
 
-	jmp .end 	
+	jmp .end
 
 .execNext:
 
@@ -133,14 +175,14 @@ j1: jmp enter
 	ldx #COMMANDNEXTPAGE
 	stx COMMANDBYTE
 	jmp j1
-	
+
 .execPrev
 
 	dec PAGEINDEX
 	ldx #COMMANDPREVPAGE
-	stx COMMANDBYTE	
+	stx COMMANDBYTE
 	jmp j1
-	
+
 .end
 
 }

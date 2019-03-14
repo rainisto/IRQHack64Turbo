@@ -51,6 +51,7 @@ activeMenuItem  = $12 	;Selected row's number
 activeMenuItemAddr = $14 	;Selected row's first color ram address
 ;           	= $15   ;hi byte for active row's color ram addres
 RESERVED 	  	= $05 	;Not used
+counter = $fa ; a zeropage address to be used as a counter
 
 ;temprary variables
 var1 			= $18 
@@ -84,4 +85,6 @@ COMMANDPREVPAGE = $41 ;Previous page command
 COMMANDENTERMASK= $01 ;Part of the command byte that flags controlling micro that a file/folder is selected.
 WAITCOUNT		= 60 ; Frame count to wait between Launching & requesting file list from micro
 GOTLISTFROMMICRO = $01 ; Menu state - Got list from micro
+
+
 

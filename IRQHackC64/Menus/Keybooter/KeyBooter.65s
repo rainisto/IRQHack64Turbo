@@ -15,7 +15,7 @@ SCNKEY 		=  $FF9F
 RESETROUTINE = $FCE2
 IRQVECTOR	= $0314
 RASTERTIME	= $FB
-WAITTIME	= 100
+WAITTIME	= 255
 
 ;Loader on the cartridge rom sets the 6th bit of this location. Which is tested by BIT $64
 ;command and waiting if overflow flag (which is the 6th bit of this location) is clear.
@@ -41,6 +41,10 @@ WAITRASTERFORTIMING
 	LDX $D012	
 	CPX #$A0
 	BNE WAITRASTERFORTIMING
+WAITRASTERFORTIMINGAGAIN	
+	LDX $D012	
+	CPX #$A0
+	BNE WAITRASTERFORTIMINGAGAIN
 	DEC RASTERTIME
 	BNE KEYSCAN		; Check for timeout, keys we are interested are not pressed.	
 TIMEOUT 
@@ -370,8 +374,13 @@ KEYS		.BYTE	$00, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39
 COMMANDS	.BYTE	$00, $61, $63, $65, $67, $69, $6B, $6D, $6F, $71, $73
 	
 TITLE	
-	.TEXT "IRQHACK64 AUTOBOOTER / BY I.R.ON"
-	.BYTE 0
+        .TEXT "PASKASOFT PRODUCTIONS KEYBOOTER     "
+        .TEXT "1. JIFFYDOS       6. JOYSTICK TEST      "
+        .TEXT "2. GIANA SISTERS  7. BOMB MANIA         "
+        .TEXT "3. INT.KARATE+    8. MICROPROSE SOCCER  "
+        .TEXT "4. M.U.L.E.       9. HOCKEY MANIA       "
+        .TEXT "5. FILEBROWSER    0. COMMANDO           "
+        .BYTE 0
 	
 
 	
